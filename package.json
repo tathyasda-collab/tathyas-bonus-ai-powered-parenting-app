@@ -9,7 +9,7 @@
   "scripts": {
     "dev": "vite",
     "prebuild": "node ./scripts/generate-env.cjs .",
-  "build": "vite build && node ./scripts/generate-env.cjs ./dist && node ./scripts/copy-index-to-root.cjs",
+  "build": "vite build && node ./scripts/generate-env.cjs ./dist",
     "preview": "vite preview"
   },
   "dependencies": {
