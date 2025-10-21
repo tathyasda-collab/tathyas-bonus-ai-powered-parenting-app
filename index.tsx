@@ -9,18 +9,23 @@ import { APP_CONFIG as DEFAULT_APP_CONFIG } from './env.js';
  * If validation passes, it renders the React application.
  */
 async function validateAndRender() {
-    // Allow a local override file (env.local.js) to exist for development.
+    // Allow a local override file (env.local.js) to exist for development only.
     // env.local.js should export `APP_CONFIG`.
     // We use import.meta.glob to avoid bundler errors when the optional file is missing.
     let appConfig = DEFAULT_APP_CONFIG as any;
     try {
-        const modules = import.meta.glob('./env.local.js');
-        if (modules['./env.local.js']) {
-            const local = await modules['./env.local.js']();
-            const anyLocal = local as any;
-            if (anyLocal && anyLocal.APP_CONFIG) {
-                console.warn('Loaded local env override from env.local.js');
-                appConfig = anyLocal.APP_CONFIG;
+        const isDev = typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.MODE === 'development';
+        // Also allow a runtime bypass flag for local debugging (not for production)
+        const runtimeBypass = (window as any).__DEV_BYPASS_ENV === true;
+        if (isDev || runtimeBypass) {
+            const modules = import.meta.glob('./env.local.js');
+            if (modules['./env.local.js']) {
+                const local = await modules['./env.local.js']();
+                const anyLocal = local as any;
+                if (anyLocal && anyLocal.APP_CONFIG) {
+                    console.warn('Loaded local env override from env.local.js');
+                    appConfig = anyLocal.APP_CONFIG;
+                }
             }
         }
     } catch (e) {
@@ -41,6 +46,23 @@ async function validateAndRender() {
             </div>
         `;
         throw new Error("Configuration object from `env.js` module could not be loaded.");
+    }
+
+    // Additional runtime guard: if any env value is masked (contains '*') or missing, fail fast with a clear message
+    const maskedKeys = Object.keys(env).filter(k => {
+        const v = env[k as keyof typeof env];
+        return !v || (typeof v === 'string' && v.includes('*')) || (typeof v === 'string' && v.trim() === '');
+    });
+
+    if (maskedKeys.length > 0 && !isDev) {
+        document.body.innerHTML = `
+            <div style="font-family: sans-serif; padding: 2rem; margin: auto; max-width: 800px; background-color: #fff3f3; color: #333; min-height: 100vh;">
+                <h1 style="color: #d9534f; border-bottom: 2px solid #eea29f; padding-bottom: 0.5rem;">Configuration Error</h1>
+                <p>The application cannot run because environment variables are missing or masked in the production build: <strong>${maskedKeys.join(', ')}</strong>.</p>
+                <p>Please set these environment variables in your deployment platform (Netlify) and trigger a fresh server-side build.</p>
+            </div>
+        `;
+        throw new Error(`Missing or masked environment variables: ${maskedKeys.join(', ')}`);
     }
 
     // In development, allow placeholders so developers can preview UI without real keys.

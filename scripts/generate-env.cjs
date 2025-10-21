@@ -60,6 +60,15 @@ try {
   env.SUPABASE_URL = '';
 }
 
+// If any value looks like a masked secret (contains '*'), clear it to avoid shipping masked placeholders to clients
+Object.keys(env).forEach(k => {
+  const v = env[k];
+  if (typeof v === 'string' && v.includes('*')) {
+    console.warn(`generate-env: detected masked value for ${k}; clearing it to avoid shipping masked secrets`);
+    env[k] = '';
+  }
+});
+
 const content = `// THIS FILE IS AUTO-GENERATED DURING THE BUILD. DO NOT EDIT.
 export const APP_CONFIG = {
   env: ${JSON.stringify(env, null, 2)}
