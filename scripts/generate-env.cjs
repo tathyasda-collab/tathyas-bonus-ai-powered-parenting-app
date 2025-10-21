@@ -4,7 +4,8 @@ const path = require('path');
 // Usage: node generate-env.cjs [outputDir]
 const outDirArg = process.argv[2] || path.join(__dirname, '..');
 const outDir = path.isAbsolute(outDirArg) ? outDirArg : path.resolve(process.cwd(), outDirArg);
-const outPath = path.join(outDir, 'env.production.js');
+const outPathProd = path.join(outDir, 'env.production.js');
+const outPathDev = path.join(outDir, 'env.js');
 
 const env = {
   SUPABASE_URL: process.env.SUPABASE_URL || '',
@@ -20,8 +21,14 @@ export const APP_CONFIG = {
 
 // Ensure the output directory exists
 fs.mkdirSync(outDir, { recursive: true });
-fs.writeFileSync(outPath, content, { encoding: 'utf8' });
-console.log('Wrote', outPath);
+
+// Write both env.production.js (used for production artifacts) and env.js
+fs.writeFileSync(outPathProd, content, { encoding: 'utf8' });
+fs.writeFileSync(outPathDev, content, { encoding: 'utf8' });
+
+console.log('Wrote', outPathProd);
+console.log('Wrote', outPathDev);
+
 if (!env.SUPABASE_URL || !env.SUPABASE_ANON_KEY || !env.API_KEY) {
   console.warn('Warning: One or more environment variables are empty. Production build may fail or be unusable.');
 }
