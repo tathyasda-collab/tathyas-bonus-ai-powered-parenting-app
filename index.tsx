@@ -11,12 +11,17 @@ import { APP_CONFIG as DEFAULT_APP_CONFIG } from './env.js';
 async function validateAndRender() {
     // Allow a local override file (env.local.js) to exist for development.
     // env.local.js should export `APP_CONFIG`.
+    // We use import.meta.glob to avoid bundler errors when the optional file is missing.
     let appConfig = DEFAULT_APP_CONFIG as any;
     try {
-        const local = await import('./env.local.js').catch(() => null);
-        if (local && local.APP_CONFIG) {
-            console.warn('Loaded local env override from env.local.js');
-            appConfig = local.APP_CONFIG;
+        const modules = import.meta.glob('./env.local.js');
+        if (modules['./env.local.js']) {
+            const local = await modules['./env.local.js']();
+            const anyLocal = local as any;
+            if (anyLocal && anyLocal.APP_CONFIG) {
+                console.warn('Loaded local env override from env.local.js');
+                appConfig = anyLocal.APP_CONFIG;
+            }
         }
     } catch (e) {
         // Ignore if the optional local file doesn't exist or fails to load.
