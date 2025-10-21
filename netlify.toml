@@ -8,6 +8,8 @@
 
 [context.production]
   # Production build will use environment variables configured in the Netlify UI.
+  [context.production.environment]
+    NODE_VERSION = "18"
 
 [context.deploy-preview]
   # Deploy previews should also use env vars configured in the Netlify UI or left empty for sandboxed previews.
