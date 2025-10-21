@@ -1,0 +1,20 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[context.production]
+  # Production build will use environment variables configured in the Netlify UI.
+
+[context.deploy-preview]
+  # Deploy previews should also use env vars configured in the Netlify UI or left empty for sandboxed previews.
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "no-referrer-when-downgrade"

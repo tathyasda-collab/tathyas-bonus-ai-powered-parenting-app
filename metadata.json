@@ -1,0 +1,5 @@
+{
+  "name": "Tathyas AI-Powered Parenting Bonus App",
+  "description": "An AI-powered application providing personalized parenting planners, meal assistants, and emotional support tools for new parents. It includes a user dashboard for accessing tools and an admin dashboard for user and app management.",
+  "requestFramePermissions": []
+}
