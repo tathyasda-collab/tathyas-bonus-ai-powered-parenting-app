@@ -13,6 +13,24 @@ const env = {
   API_KEY: process.env.API_KEY || '',
 };
 
+// Helper to clean values that may include accidental quotes or trailing commas
+const clean = (v) => {
+  if (typeof v !== 'string') return v;
+  let s = v.trim();
+  // remove surrounding single or double quotes
+  if ((s.startsWith("'") && s.endsWith("'")) || (s.startsWith('"') && s.endsWith('"'))) {
+    s = s.slice(1, -1).trim();
+  }
+  // remove trailing comma if present
+  if (s.endsWith(',')) s = s.slice(0, -1).trim();
+  return s;
+};
+
+// sanitize env values
+env.SUPABASE_URL = clean(env.SUPABASE_URL);
+env.SUPABASE_ANON_KEY = clean(env.SUPABASE_ANON_KEY);
+env.API_KEY = clean(env.API_KEY);
+
 const content = `// THIS FILE IS AUTO-GENERATED DURING THE BUILD. DO NOT EDIT.
 export const APP_CONFIG = {
   env: ${JSON.stringify(env, null, 2)}
