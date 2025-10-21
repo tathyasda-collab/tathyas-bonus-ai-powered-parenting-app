@@ -37,7 +37,7 @@
     </style>
 
     <link rel="stylesheet" href="/index.css">
-    <!-- Vite will handle module resolution; use a module entry point -->
+    <!-- Vite entry: use the source module so Vite can bundle correctly -->
   <script type="module" crossorigin src="/assets/index-D4_AVkCh.js"></script>
 </head>
 <body>
@@ -58,7 +58,7 @@
     import map above.
     ================================================================
   -->
-  <script type="text/babel" data-module src="./index.tsx"></script>
+  <!-- Vite will load the module above during build; no runtime babel loader required -->
 
 </body>
 </html>
