@@ -18,6 +18,21 @@ export default defineConfig(({ mode }) => {
         alias: {
           '@': path.resolve(__dirname, '.'),
         }
+      },
+      build: {
+        // Split vendors into a separate chunk to reduce the main bundle size
+        rollupOptions: {
+          output: {
+            manualChunks(id) {
+              if (id.includes('node_modules')) {
+                if (id.includes('react') || id.includes('react-dom')) return 'vendor-react';
+                if (id.includes('@supabase') || id.includes('@google')) return 'vendor-sdks';
+                return 'vendor';
+              }
+            }
+          }
+        },
+        chunkSizeWarningLimit: 800
       }
     };
 });
