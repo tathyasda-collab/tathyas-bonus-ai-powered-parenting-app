@@ -1,90 +1,42 @@
+// scripts/generate-env.cjs  (replace entire file contents with this)
 const fs = require('fs');
 const path = require('path');
 
-// Usage: node generate-env.cjs [outputDir]
-const outDirArg = process.argv[2] || path.join(__dirname, '..');
-const outDir = path.isAbsolute(outDirArg) ? outDirArg : path.resolve(process.cwd(), outDirArg);
-const outPathProd = path.join(outDir, 'env.production.js');
-const outPathDev = path.join(outDir, 'env.js');
+const outPath = path.join(__dirname, '..', 'env.js');
+const outProdPath = path.join(__dirname, '..', 'env.production.js');
 
-const env = {
-  SUPABASE_URL: process.env.SUPABASE_URL || '',
-  SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY || '',
-  API_KEY: process.env.API_KEY || '',
+const vars = {
+  SUPABASE_URL: process.env.SUPABASE_URL,
+  SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY,
+  API_KEY: process.env.API_KEY
 };
 
-// Helper to clean values that may include accidental quotes, trailing commas, or stray characters
-const clean = (v) => {
-  if (typeof v !== 'string') return v;
-  let s = v.trim();
+// Log presence (true/false) so we can see in build logs whether Vercel provided them.
+// IMPORTANT: do NOT print the actual secret values.
+console.log('CONFIG CHECK - SUPABASE_URL present?', !!vars.SUPABASE_URL);
+console.log('CONFIG CHECK - SUPABASE_ANON_KEY present?', !!vars.SUPABASE_ANON_KEY);
+console.log('CONFIG CHECK - API_KEY present?', !!vars.API_KEY);
 
-  // If value starts and ends with the same quote char, strip them
-  if ((s.startsWith("'") && s.endsWith("'")) || (s.startsWith('"') && s.endsWith('"'))) {
-    s = s.slice(1, -1).trim();
-  }
-
-  // Remove a trailing comma if present
-  if (s.endsWith(',')) s = s.slice(0, -1).trim();
-
-  // Remove obvious stray trailing characters that aren't typically part of URLs/keys
-  s = s.replace(/[\s\u0000-\u001F]+$/g, '');
-  s = s.replace(/[\x00-\x1F]+$/g, '');
-
-  // If the string contains an accidental unmatched trailing single quote, drop it
-  if (s.endsWith("'" ) || s.endsWith('"')) {
-    s = s.slice(0, -1).trim();
-  }
-
-  return s;
-};
-
-// sanitize env values
-env.SUPABASE_URL = clean(env.SUPABASE_URL);
-env.SUPABASE_ANON_KEY = clean(env.SUPABASE_ANON_KEY);
-env.API_KEY = clean(env.API_KEY);
-
-// Basic normalization: ensure SUPABASE_URL looks like a URL. If it lacks a scheme, try to add https://
-try {
-  if (env.SUPABASE_URL) {
-    let url = env.SUPABASE_URL;
-    if (!/^https?:\/\//i.test(url)) {
-      url = 'https://' + url;
-    }
-    // validate by constructing a URL object
-    const _u = new URL(url);
-    // store normalized URL without trailing slash
-    env.SUPABASE_URL = _u.origin + _u.pathname.replace(/\/$/, '');
-  }
-} catch (e) {
-  console.warn('generate-env: SUPABASE_URL looks invalid after sanitization; leaving as-is (may be empty)');
-  env.SUPABASE_URL = '';
-}
-
-// If any value looks like a masked secret (contains '*'), clear it to avoid shipping masked placeholders to clients
-Object.keys(env).forEach(k => {
-  const v = env[k];
-  if (typeof v === 'string' && v.includes('*')) {
-    console.warn(`generate-env: detected masked value for ${k}; clearing it to avoid shipping masked secrets`);
-    env[k] = '';
-  }
-});
-
-const content = `// THIS FILE IS AUTO-GENERATED DURING THE BUILD. DO NOT EDIT.
+// Create the file but with values as strings (we still write the real values so the app can use them).
+// This will write the real values into env.js (be cautious; Vercel logs won't show them).
+const content = `// AUTO-GENERATED DURING BUILD
 export const APP_CONFIG = {
-  env: ${JSON.stringify(env, null, 2)}
+  env: ${JSON.stringify({
+    SUPABASE_URL: vars.SUPABASE_URL || '',
+    SUPABASE_ANON_KEY: vars.SUPABASE_ANON_KEY || '',
+    API_KEY: vars.API_KEY || ''
+  }, null, 2)}
 };
 `;
 
-// Ensure the output directory exists
-fs.mkdirSync(outDir, { recursive: true });
+fs.writeFileSync(outPath, content, 'utf8');
+fs.writeFileSync(outProdPath, content, 'utf8');
 
-// Write both env.production.js (used for production artifacts) and env.js
-fs.writeFileSync(outPathProd, content, { encoding: 'utf8' });
-fs.writeFileSync(outPathDev, content, { encoding: 'utf8' });
+console.log('Wrote', outPath);
+console.log('Wrote', outProdPath);
 
-console.log('Wrote', outPathProd);
-console.log('Wrote', outPathDev);
-
-if (!env.SUPABASE_URL || !env.SUPABASE_ANON_KEY || !env.API_KEY) {
-  console.warn('Warning: One or more environment variables are empty. Production build may fail or be unusable.');
+// If any critical var is missing, exit with non-zero code so the build fails and we fix Vercel settings.
+if (!vars.SUPABASE_URL || !vars.SUPABASE_ANON_KEY || !vars.API_KEY) {
+  console.error('ERROR: One or more required build environment variables are missing. Aborting build.');
+  process.exit(1);
 }
