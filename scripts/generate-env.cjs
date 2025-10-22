@@ -1,8 +1,8 @@
 // scripts/generate-env.cjs
-// Generates a .env.production file for Vite using your real Vercel environment variables.
+// Generates .env.production for Vite using build-time variables (Vercel provides them).
 
-const fs = require("fs");
-const path = require("path");
+const fs = require('fs');
+const path = require('path');
 
 const vars = {
   VITE_SUPABASE_URL: process.env.SUPABASE_URL || "",
@@ -10,23 +10,20 @@ const vars = {
   VITE_API_KEY: process.env.API_KEY || "",
 };
 
-// Log presence (true/false) for debugging
+// Debug presence (no secret values printed)
 console.log("CONFIG CHECK - SUPABASE_URL present?", !!vars.VITE_SUPABASE_URL);
 console.log("CONFIG CHECK - SUPABASE_ANON_KEY present?", !!vars.VITE_SUPABASE_ANON_KEY);
 console.log("CONFIG CHECK - API_KEY present?", !!vars.VITE_API_KEY);
 
-// Generate a `.env.production` file (used by Vite automatically)
-const envLines = Object.entries(vars)
-  .map(([key, value]) => `${key}=${value}`)
-  .join("\n");
+// Create .env.production (Vite will read this automatically)
+const outPath = path.join(__dirname, '..', '.env.production');
+const content = Object.entries(vars).map(([k, v]) => `${k}=${v}`).join('\n');
 
-const outPath = path.join(__dirname, "..", ".env.production");
+fs.writeFileSync(outPath, content, 'utf8');
+console.log('✅ Wrote', outPath);
 
-fs.writeFileSync(outPath, envLines, "utf8");
-console.log("✅ Wrote", outPath);
-
-// Fail build if any important variable is missing
+// Fail fast if any required var is missing so you fix Vercel settings
 if (!vars.VITE_SUPABASE_URL || !vars.VITE_SUPABASE_ANON_KEY || !vars.VITE_API_KEY) {
-  console.error("❌ Missing one or more required environment variables.");
+  console.error('❌ Missing one or more required environment variables at build time.');
   process.exit(1);
 }
