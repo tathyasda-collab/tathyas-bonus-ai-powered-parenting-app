@@ -11,6 +11,15 @@ if (!SUPABASE_URL || !SUPABASE_KEY) {
 // Create the Supabase client
 export const supabase: SupabaseClient = createClient(SUPABASE_URL ?? '', SUPABASE_KEY ?? '');
 
+// Backwards-compatible accessor used by many modules (api.ts expects getSupabase)
+export const getSupabase = (): SupabaseClient => {
+  if (!SUPABASE_URL || !SUPABASE_KEY) {
+    // Throwing here would make the app fail fast; instead log for diagnostics.
+    console.error('getSupabase: SUPABASE_URL or SUPABASE_ANON_KEY missing. Returning client that may be non-functional.');
+  }
+  return supabase;
+};
+
 // DEBUG: expose for quick manual testing in console (temporary)
 if (typeof window !== 'undefined') {
   // Attach a short helper to window for debugging (remove in production if you prefer)

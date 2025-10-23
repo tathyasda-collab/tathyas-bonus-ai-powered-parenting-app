@@ -19,10 +19,12 @@ Key architecture & patterns
   in `app_users` when missing. Many UI flows rely on this (e.g. `needsSetup`).
 - Admin behavior: if `user.role === 'admin'` the app renders `AdminDashboard` unconditionally.
 
-Environment & build
-- Local overrides: `env.js` must export `APP_CONFIG`. Developers may add `env.local.js` for
-  local secrets (index.tsx will load it if present).
-- Important environment vars: `API_KEY` (Gemini/Google), `SUPABASE_URL`, `SUPABASE_ANON_KEY`.
+- Environment & build
+- Local overrides: During local development you can keep using `env.js` / `env.local.js` for quick overrides. For production builds the project uses Vite environment variables (prefixed with `VITE_`).
+- Important environment vars (Vite build-time):
+  - VITE_SUPABASE_URL
+  - VITE_SUPABASE_ANON_KEY
+  - VITE_API_KEY
 - Commands:
   - npm install
   - npm run dev        (start Vite dev server)

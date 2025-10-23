@@ -7,10 +7,13 @@ const path = require('path');
 
 const outPath = path.join(__dirname, '..', '.env.production');
 
+// Support both prefixed (VITE_*) and unprefixed env vars. Some hosts (Vercel)
+// may expose VITE_* variables while others expose unprefixed names. Prefer the
+// VITE_* version if present, otherwise fall back to the unprefixed name.
 const vars = {
-  VITE_SUPABASE_URL: process.env.SUPABASE_URL || "",
-  VITE_SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY || "",
-  VITE_API_KEY: process.env.API_KEY || "",
+  VITE_SUPABASE_URL: process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || "",
+  VITE_SUPABASE_ANON_KEY: process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || "",
+  VITE_API_KEY: process.env.VITE_API_KEY || process.env.API_KEY || "",
 };
 
 // Log presence only (no secret values)

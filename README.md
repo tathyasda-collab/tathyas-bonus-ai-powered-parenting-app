@@ -21,13 +21,13 @@ View your app in AI Studio: https://ai.studio/apps/drive/1iNeu5exPKgCI7DlHtrBEDx
 
 ## Deploying to Netlify
 
-This project is configured to build with Vite and can be deployed to Netlify. The app requires three environment variables to be set in the Netlify site settings:
+This project is configured to build with Vite and can be deployed to Netlify, Vercel, Cloudflare Pages, or GitHub Pages (with Actions). The app requires three environment variables to be set at build time. Because we use Vite, these must be prefixed with VITE_:
 
-- `API_KEY` — Google / Gemini API key used by the app.
-- `SUPABASE_URL` — Your Supabase project URL (example: https://xyz.supabase.co).
-- `SUPABASE_ANON_KEY` — Supabase anon (public) API key.
+- `VITE_API_KEY` — Google / Gemini API key used by the app.
+- `VITE_SUPABASE_URL` — Your Supabase project URL (example: https://xyz.supabase.co).
+- `VITE_SUPABASE_ANON_KEY` — Supabase anon (public) API key.
 
-You can set these in the Netlify UI for your site:
+You can set these in your hosting provider's UI for environment variables. Example (Vercel): Project → Settings → Environment Variables → Add the keys above for Production.
 
 1. Go to your Site settings > Build & deploy > Environment > Environment variables.
 2. Add `API_KEY`, `SUPABASE_URL`, and `SUPABASE_ANON_KEY` with their values.

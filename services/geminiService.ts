@@ -1,6 +1,9 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { ApiError } from './api';
-import { APP_CONFIG } from '../env.js';
+
+// Read API key from Vite environment variables (build-time). This keeps config
+// consistent with other services that use import.meta.env.VITE_*
+const API_KEY = import.meta.env.VITE_API_KEY as string | undefined;
 
 let ai: GoogleGenAI | null = null;
 
@@ -12,11 +15,11 @@ let ai: GoogleGenAI | null = null;
  */
 const getAiClient = (): GoogleGenAI => {
     if (!ai) {
-        const apiKey = APP_CONFIG.env.API_KEY;
+        const apiKey = API_KEY;
 
         if (!apiKey) {
             // This is a developer-facing error, as the key should always be set.
-            throw new Error("Gemini API key is not configured. Please set the API_KEY in your env.js file or deployment environment variables.");
+            throw new Error("Gemini API key is not configured. Please set VITE_API_KEY in your build/deployment environment variables.");
         }
         ai = new GoogleGenAI({ apiKey });
     }
