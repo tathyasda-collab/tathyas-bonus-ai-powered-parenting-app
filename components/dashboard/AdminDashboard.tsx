@@ -5,6 +5,7 @@ import Button from '../shared/Button';
 import { api, ApiError } from '../../services/api';
 import Loader from '../shared/Loader';
 import IntegrationSettings from './IntegrationSettings';
+import { useAuth } from '../../hooks/useAuth';
 
 const StatCard: React.FC<{ title: string; value: number | string; icon: React.ReactNode; className?: string }> = ({ title, value, icon, className = '' }) => (
     <Card className={`flex items-center p-4 ${className}`}>
@@ -153,6 +154,7 @@ const AdminDashboard: React.FC = () => {
     const [renewalLink, setRenewalLink] = useState('');
     const [isDownloading, setIsDownloading] = useState(false);
     const [view, setView] = useState<'dashboard' | 'integrations'>('dashboard');
+    const { logout } = useAuth();
 
     useEffect(() => {
         const fetchData = async () => {
@@ -331,6 +333,15 @@ const AdminDashboard: React.FC = () => {
                                         {isDownloading ? 'Downloading...' : 'Download All Data'}
                                     </Button>
                                 </div>
+                            </div>
+                            <div className="border-t pt-4 dark:border-gray-600">
+                                <Button 
+                                    onClick={logout} 
+                                    className="w-full bg-red-600 hover:bg-red-700 text-white flex items-center justify-center"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+                                    Logout
+                                </Button>
                             </div>
                         </div>
                     </Card>
