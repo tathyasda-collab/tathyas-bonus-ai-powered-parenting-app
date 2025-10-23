@@ -1,28 +1,25 @@
+// services/supabaseClient.ts
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { APP_CONFIG } from '../env.js';
 
-let supabaseInstance: SupabaseClient | null = null;
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string | undefined;
+const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
 
-/**
- * Lazily initializes and returns the Supabase client instance.
- * This function ensures the client is created only once, and only when it's first needed.
- * This approach prevents race conditions during the initial script loading where
- * environment variables might not be available yet.
- * @returns {SupabaseClient} The initialized Supabase client.
- */
-export const getSupabase = (): SupabaseClient => {
-    if (supabaseInstance) {
-        return supabaseInstance;
-    }
+if (!SUPABASE_URL || !SUPABASE_KEY) {
+  console.error('supabaseClient: missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY');
+}
 
-    const { SUPABASE_URL, SUPABASE_ANON_KEY } = APP_CONFIG.env;
+// Create the Supabase client
+export const supabase: SupabaseClient = createClient(SUPABASE_URL ?? '', SUPABASE_KEY ?? '');
 
-    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-        // This error will now be thrown at runtime when the client is first needed.
-        // The main index.tsx validation should catch this first, but this is a safeguard.
-        throw new Error("Supabase URL and Anon Key must be provided. Check your env.js file or deployment environment variables.");
-    }
+// DEBUG: expose for quick manual testing in console (temporary)
+if (typeof window !== 'undefined') {
+  // Attach a short helper to window for debugging (remove in production if you prefer)
+  (window as any).__SUPABASE__ = supabase;
 
-    supabaseInstance = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    return supabaseInstance;
-};
+  // Print a simple presence check (true/false), not secrets.
+  supabase.auth.getSession().then(({ data: { session } }) => {
+    console.log('DEBUG: supabaseClient session present?', !!session);
+  }).catch(err => {
+    console.log('DEBUG: supabaseClient getSession error (non-fatal)', err?.message ?? err);
+  });
+}
