@@ -246,8 +246,8 @@ const MealAssistant: React.FC = () => {
 
         } catch (e) {
             console.error("Failed to render meal plan history item:", e, item);
-            if (typeof item.result === 'string' && !item.result.trim().startsWith('{')) {
-                content = <p className="whitespace-pre-wrap">{item.result}</p>;
+            if (typeof item.result === 'string') {
+                content = <pre className="whitespace-pre-wrap">{item.result}</pre>;
             }
         }
 

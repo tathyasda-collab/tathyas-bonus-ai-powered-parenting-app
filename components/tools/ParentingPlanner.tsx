@@ -165,9 +165,9 @@ const ParentingPlanner: React.FC = () => {
             }
         } catch (e) {
             console.error("Failed to render planner history item:", e, item);
-            // If result is a plain string and not JSON, render it directly.
-            if (typeof item.result === 'string' && !item.result.trim().startsWith('{')) {
-                content = <p className="whitespace-pre-wrap">{item.result}</p>;
+            // If parsing failed, render the raw string so the UI remains usable.
+            if (typeof item.result === 'string') {
+                content = <pre className="whitespace-pre-wrap">{item.result}</pre>;
             }
         }
 

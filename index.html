@@ -31,7 +31,9 @@
       }
     </style>
 
-    <link rel="stylesheet" href="/index.css">
+    <!-- stylesheet is imported by the app entry (index.tsx) so Vite will emit the
+      built CSS file with a hashed name. Do not reference a fixed `/index.css`
+      here or the production build may load a non-existent file. -->
     <!-- Vite entry: use the source module so Vite can bundle correctly -->
     <script type="module" crossorigin src="/index.tsx"></script>
 </head>
