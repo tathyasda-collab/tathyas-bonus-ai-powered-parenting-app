@@ -50,12 +50,12 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({ setActiveView }) =
     }
   }, [user]);
 
-  const greeting = `Welcome back, ${fullProfile?.full_name || profile?.full_name || user?.email}!`;
+  const greeting = `Welcome back, ${fullProfile?.name || fullProfile?.full_name || profile?.full_name || user?.email}!`;
 
   // Edit handlers
   const handleEditUser = () => {
     setEditUserData({
-      full_name: fullProfile?.full_name || '',
+      full_name: fullProfile?.name || fullProfile?.full_name || '',
       gender: fullProfile?.gender || '',
       age: fullProfile?.age || '',
       phone: fullProfile?.phone || ''
@@ -74,11 +74,11 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({ setActiveView }) =
 
   const handleEditAddress = () => {
     setEditAddressData({
-      street_address: fullProfile?.street_address || '',
+      street_address: fullProfile?.street || fullProfile?.street_address || '',
       address: fullProfile?.address || '',
       district: fullProfile?.district || '',
       state: fullProfile?.state || '',
-      pin_code: fullProfile?.pin_code || ''
+      pin_code: fullProfile?.pincode || fullProfile?.pin_code || ''
     });
     setIsEditingAddress(true);
   };
@@ -196,7 +196,7 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({ setActiveView }) =
                     <td className="px-4 py-2 font-medium text-white bg-white/10">Name</td>
                     <td className="px-4 py-2 text-white/90">
                       {!isEditingUser ? (
-                        fullProfile?.full_name || profile?.full_name || 'Not provided'
+                        fullProfile?.name || fullProfile?.full_name || profile?.full_name || 'Not provided'
                       ) : (
                         <input
                           type="text"
@@ -446,7 +446,7 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({ setActiveView }) =
                     <td className="px-4 py-2 font-medium text-white bg-white/10">Street Address</td>
                     <td className="px-4 py-2 text-white/90">
                       {!isEditingAddress ? (
-                        fullProfile?.street_address || 'Not provided'
+                        fullProfile?.street || fullProfile?.street_address || 'Not provided'
                       ) : (
                         <input
                           type="text"
@@ -510,7 +510,7 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({ setActiveView }) =
                     <td className="px-4 py-2 font-medium text-white bg-white/10">Pin Code</td>
                     <td className="px-4 py-2 text-white/90">
                       {!isEditingAddress ? (
-                        fullProfile?.pin_code || 'Not provided'
+                        fullProfile?.pincode || fullProfile?.pin_code || 'Not provided'
                       ) : (
                         <input
                           type="text"
