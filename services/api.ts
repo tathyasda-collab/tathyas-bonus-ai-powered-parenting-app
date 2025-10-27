@@ -507,16 +507,19 @@ export const getCurrentUser = async () => {
 export const getUserProfile = async (userId: string): Promise<UserProfile | null> => {
   const supabase = getSupabase();
   
-  // First try to get user profile from app_users table
+  console.log('getUserProfile called with userId:', userId);
+  
+  // First try to get user profile from app_users table by user_id
   const { data: appUserProfileData, error: appUserProfileError } = await supabase
     .from('app_users')
     .select('*')
     .eq('user_id', userId)
     .single();
     
-  console.log('app_users query result:', { data: appUserProfileData, error: appUserProfileError });
+  console.log('app_users query by user_id result:', { data: appUserProfileData, error: appUserProfileError });
     
   if (!appUserProfileError && appUserProfileData) {
+    console.log('Found data in app_users by user_id, returning profile');
     return {
       id: appUserProfileData.user_id,
       email: appUserProfileData.email,
@@ -539,6 +542,56 @@ export const getUserProfile = async (userId: string): Promise<UserProfile | null
       created_at: appUserProfileData.created_at,
       updated_at: appUserProfileData.updated_at
     };
+  }
+
+  // Try to get user email from localStorage to search by email as fallback
+  const userSession = localStorage.getItem('user_session');
+  let userEmail = '';
+  if (userSession) {
+    try {
+      const userData = JSON.parse(userSession);
+      userEmail = userData.email;
+      console.log('Found email in session:', userEmail);
+    } catch (e) {
+      console.log('Failed to parse user session');
+    }
+  }
+
+  // If we have an email, try to find the profile by email
+  if (userEmail) {
+    const { data: appUserByEmail, error: emailError } = await supabase
+      .from('app_users')
+      .select('*')
+      .eq('email', userEmail)
+      .single();
+      
+    console.log('app_users query by email result:', { data: appUserByEmail, error: emailError });
+      
+    if (!emailError && appUserByEmail) {
+      console.log('Found data in app_users by email, returning profile');
+      return {
+        id: appUserByEmail.user_id,
+        email: appUserByEmail.email,
+        full_name: appUserByEmail.name,
+        gender: appUserByEmail.gender,
+        age: appUserByEmail.age,
+        phone: appUserByEmail.phone,
+        spouse_name: appUserByEmail.spouse_name,
+        spouse_gender: appUserByEmail.spouse_gender,
+        spouse_age: appUserByEmail.spouse_age,
+        street_address: appUserByEmail.street,
+        address: appUserByEmail.address,
+        district: appUserByEmail.district,
+        state: appUserByEmail.state,
+        pin_code: appUserByEmail.pincode || appUserByEmail.pin_code,
+        baby_name: appUserByEmail.baby_name,
+        baby_gender: appUserByEmail.baby_gender,
+        baby_date_of_birth: appUserByEmail.baby_date_of_birth,
+        role: appUserByEmail.role || 'user',
+        created_at: appUserByEmail.created_at,
+        updated_at: appUserByEmail.updated_at
+      };
+    }
   }
   
   // Fallback to user_profiles table if no app_users record found
