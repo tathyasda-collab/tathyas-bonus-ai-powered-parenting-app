@@ -1,19 +1,6 @@
 
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 
-// Fix: Add a global declaration for window.APP_CONFIG to make TypeScript aware of it.
-declare global {
-  interface Window {
-    APP_CONFIG?: {
-      env?: {
-        SUPABASE_URL?: string;
-        SUPABASE_ANON_KEY?: string;
-        API_KEY?: string;
-      };
-    };
-  }
-}
-
 export interface AuthUser {
   id: string;
   email: string;

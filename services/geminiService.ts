@@ -10,9 +10,9 @@ function getAiClient(): GoogleGenAI {
   if (aiClient) {
     return aiClient;
   }
-  const apiKey = window.APP_CONFIG?.env?.API_KEY;
-  if (!apiKey || apiKey === "YOUR_GEMINI_API_KEY") {
-    throw new Error("Gemini API key is not configured. Please check your env.js file.");
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error("Gemini API key is not configured. Please check your environment variables.");
   }
   aiClient = new GoogleGenAI({ apiKey });
   return aiClient;

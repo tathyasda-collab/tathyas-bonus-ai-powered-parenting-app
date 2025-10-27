@@ -8,11 +8,11 @@ export const getSupabase = (): SupabaseClient => {
     return supabaseInstance;
   }
 
-  const supabaseUrl = window.APP_CONFIG?.env?.SUPABASE_URL;
-  const supabaseAnonKey = window.APP_CONFIG?.env?.SUPABASE_ANON_KEY;
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-  if (!supabaseUrl || !supabaseAnonKey || supabaseUrl === "YOUR_SUPABASE_URL") {
-    throw new Error("Supabase URL or Anon Key is not configured. Please check your env.js file.");
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error("Supabase URL or Anon Key is not configured. Please check your environment variables.");
   }
 
   supabaseInstance = createClient(supabaseUrl, supabaseAnonKey);
