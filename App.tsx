@@ -63,8 +63,9 @@ const AppContent: React.FC = () => {
 
 function App() {
     useEffect(() => {
-        // Initialize performance tracking
-        initPerformanceTracking();
+        // Temporarily disable performance tracking to debug auth issues
+        // initPerformanceTracking();
+        console.log('Performance tracking temporarily disabled for debugging');
     }, []);
 
     return (

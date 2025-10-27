@@ -25,6 +25,11 @@ interface PerformanceStats {
 
 // Save performance metric to database (called by Speed Insights)
 export const savePerformanceMetric = async (metric: PerformanceMetric) => {
+  // Don't save metrics if we're in development or if there are auth issues
+  if (typeof window === 'undefined' || window.location.hostname === 'localhost') {
+    return;
+  }
+  
   const supabase = getSupabase();
   
   try {
@@ -40,6 +45,7 @@ export const savePerformanceMetric = async (metric: PerformanceMetric) => {
     }
   } catch (err) {
     console.warn('Performance tracking error:', err);
+    // Don't throw errors to avoid breaking the app
   }
 };
 
@@ -297,51 +303,75 @@ const getMockPerformanceData = () => {
 
 // Initialize performance tracking
 export const initPerformanceTracking = () => {
-  // Set up performance observers for Speed Insights
-  if (typeof window !== 'undefined' && 'PerformanceObserver' in window) {
-    // Observe LCP
+  // Only initialize performance tracking in production and after a delay
+  if (typeof window === 'undefined' || window.location.hostname === 'localhost') {
+    console.log('Performance tracking disabled in development');
+    return;
+  }
+  
+  // Delay initialization to avoid interfering with auth
+  setTimeout(() => {
+    try {
+      if ('PerformanceObserver' in window) {
+        initPerformanceObservers();
+      }
+    } catch (error) {
+      console.warn('Failed to initialize performance tracking:', error);
+    }
+  }, 3000); // 3 second delay
+};
+
+const initPerformanceObservers = () => {
+  // Observe LCP
+  try {
     const lcpObserver = new PerformanceObserver((entryList) => {
       const entries = entryList.getEntries();
       const lastEntry = entries[entries.length - 1] as any;
       
       if (lastEntry) {
-        // Save LCP metric
-        savePerformanceMetric({
-          timestamp: new Date().toISOString(),
-          page: window.location.pathname,
-          lcp: lastEntry.startTime / 1000,
-          fid: 0,
-          cls: 0,
-          ttfb: 0
-        });
+        // Save LCP metric with additional safety
+        setTimeout(() => {
+          savePerformanceMetric({
+            timestamp: new Date().toISOString(),
+            page: window.location.pathname,
+            lcp: lastEntry.startTime / 1000,
+            fid: 0,
+            cls: 0,
+            ttfb: 0
+          }).catch(() => {
+            // Silently fail to avoid breaking the app
+          });
+        }, 1000);
       }
     });
     
-    try {
-      lcpObserver.observe({ entryTypes: ['largest-contentful-paint'] });
-    } catch (e) {
-      console.warn('LCP observer not supported');
-    }
-    
-    // Observe FID
+    lcpObserver.observe({ entryTypes: ['largest-contentful-paint'] });
+  } catch (e) {
+    console.warn('LCP observer not supported');
+  }
+  
+  // Observe FID
+  try {
     const fidObserver = new PerformanceObserver((entryList) => {
       const entries = entryList.getEntries();
       entries.forEach((entry: any) => {
-        savePerformanceMetric({
-          timestamp: new Date().toISOString(),
-          page: window.location.pathname,
-          lcp: 0,
-          fid: entry.processingStart - entry.startTime,
-          cls: 0,
-          ttfb: 0
-        });
+        setTimeout(() => {
+          savePerformanceMetric({
+            timestamp: new Date().toISOString(),
+            page: window.location.pathname,
+            lcp: 0,
+            fid: entry.processingStart - entry.startTime,
+            cls: 0,
+            ttfb: 0
+          }).catch(() => {
+            // Silently fail to avoid breaking the app
+          });
+        }, 1000);
       });
     });
     
-    try {
-      fidObserver.observe({ entryTypes: ['first-input'] });
-    } catch (e) {
-      console.warn('FID observer not supported');
-    }
+    fidObserver.observe({ entryTypes: ['first-input'] });
+  } catch (e) {
+    console.warn('FID observer not supported');
   }
 };

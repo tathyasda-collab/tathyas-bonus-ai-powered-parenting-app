@@ -163,11 +163,11 @@ const AdminDashboard: React.FC = () => {
             setLoading(true);
             setError(null);
             try {
-                // Force refresh stats using Edge Function before loading dashboard
-                console.log('Refreshing admin statistics before loading dashboard...');
-                await api.refreshAdminStats();
+                // Temporarily disable Edge Function refresh to debug auth issues
+                // console.log('Refreshing admin statistics before loading dashboard...');
+                // await api.refreshAdminStats();
                 
-                // Now fetch the updated stats
+                // Now fetch the stats without refresh for debugging
                 const adminStats = await api.getAdminStats();
                 const link = await api.getRenewalLink();
                 setStats(adminStats);
