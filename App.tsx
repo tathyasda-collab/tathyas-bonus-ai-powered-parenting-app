@@ -1,5 +1,7 @@
 
 import React from 'react';
+import { SpeedInsights } from '@vercel/speed-insights/react';
+import { Analytics } from '@vercel/analytics/react';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ErrorProvider } from './context/ErrorContext';
@@ -65,6 +67,8 @@ function App() {
                 <AuthProvider>
                     <AppContent />
                     <ErrorToast />
+                    <SpeedInsights />
+                    <Analytics />
                 </AuthProvider>
             </ErrorProvider>
         </ThemeProvider>
