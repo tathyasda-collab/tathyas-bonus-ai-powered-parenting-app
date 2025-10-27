@@ -306,108 +306,36 @@ if (typeof window !== 'undefined') {
   (window as any).createTestUser = createTestUser;
 }
 
-// Authentication Functions - Updated comprehensive login flow using Supabase Auth
+// Authentication Functions - Simplified for debugging auth issues
 export const loginWithPassword = async (email: string, password: string) => {
   const supabase = getSupabase();
   
   try {
-    // Step 1: Use Supabase's built-in authentication
+    console.log('🔍 Starting simplified login for:', email);
+    
+    // Step 1: Use ONLY Supabase's built-in authentication (no additional DB calls)
     const { data, error } = await supabase.auth.signInWithPassword({
       email: email.toLowerCase().trim(),
       password: password
     });
     
+    console.log('🔍 Auth response:', { data: !!data, error: error?.message });
+    
     if (error || !data.user) {
+      console.error('❌ Auth failed:', error?.message || 'No user data');
       throw new ApiError('Invalid email or password');
     }
 
-    // Step 2: Check app_users table for subscription status
-    const { data: appUser, error: appUserError } = await supabase
-      .from('app_users')
-      .select('*')
-      .eq('email', email.toLowerCase().trim())
-      .single();
+    console.log('✅ Supabase auth successful');
 
-    if (appUserError || !appUser) {
-      // Create default app_users entry if not exists
-      const { data: newAppUser, error: createError } = await supabase
-        .from('app_users')
-        .insert({
-          email: email.toLowerCase().trim(),
-          user_id: data.user.id,
-          status: 'active', // Default to active for testing
-          role: 'user',
-          name: data.user.user_metadata?.full_name || email.split('@')[0],
-          subscription_renewed: false
-        })
-        .select()
-        .single();
-      
-      if (createError) {
-        // Continue with default values
-      } else {
-        // Default app_users entry created successfully
-      }
-    }
-
-    // Use appUser data or fallback to defaults
-    const userRecord = appUser || {
-      status: 'active',
-      subscription_renewed: false,
-      role: 'user',
-      name: data.user.user_metadata?.full_name || email.split('@')[0]
-    };
-
-    // Step 3: Check subscription status
-    if (userRecord.status === 'expired') {
-      // Get renewal URL from app_settings
-      const { data: settings, error: settingsError } = await supabase
-        .from('app_settings')
-        .select('renewal_url')
-        .single();
-      
-      const renewalUrl = settings?.renewal_url || '#';
-      
-      throw new ApiError('SUBSCRIPTION_EXPIRED', {
-        message: 'Your subscription has expired. Please renew to continue using the app.',
-        renewalUrl: renewalUrl
-      });
-    }
-
-    // Step 4: Check if subscription was renewed or if profile setup is needed
-    let needsProfileSetup = false;
-    if (userRecord.subscription_renewed === true) {
-      // Check if profile exists in user_profiles table
-      const { data: userProfile, error: profileError } = await supabase
-        .from('user_profiles')
-        .select('*')
-        .eq('user_id', data.user.id)
-        .single();
-      
-      if (profileError || !userProfile || !userProfile.name) {
-        needsProfileSetup = true;
-      }
-    } else {
-      // Regular user login - still check for profile
-      const { data: userProfile, error: profileError } = await supabase
-        .from('user_profiles')
-        .select('*')
-        .eq('user_id', data.user.id)
-        .single();
-      
-      if (profileError || !userProfile || !userProfile.name) {
-        needsProfileSetup = true;
-      }
-    }
-
-    // Create user session
+    // Create minimal user session (skip all database checks for now)
     const userSession = {
       id: data.user.id,
       email: data.user.email,
-      role: userRecord.role || 'user',
-      full_name: userRecord.name || data.user.user_metadata?.full_name,
+      role: 'user', // Default role for debugging
+      full_name: data.user.user_metadata?.full_name || email.split('@')[0],
       authenticated: true,
-      needsProfileSetup: needsProfileSetup,
+      needsProfileSetup: false, // Skip profile checks for debugging
       loginTime: new Date().toISOString()
     };
 
@@ -420,9 +348,11 @@ export const loginWithPassword = async (email: string, password: string) => {
       detail: { user: userSession, authenticated: true }
     }));
 
+    console.log('✅ Login completed successfully');
+    return { user: data.user, needsProfileSetup: false };
     
-    return { user: data.user, needsProfileSetup };  } catch (error: any) {
-    console.error('Login error:', error);
+  } catch (error: any) {
+    console.error('❌ Login error:', error);
     if (error instanceof ApiError) {
       throw error;
     }
