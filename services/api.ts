@@ -1173,84 +1173,15 @@ export const getAdminStats = async () => {
   const supabase = getSupabase();
   
   try {
-    // Use the new admin_dashboard_stats view for real-time calculations
-    const { data: statsData, error: statsError } = await supabase
-      .from('admin_dashboard_stats')
-      .select('*')
-      .single();
+    // Use the database function for accurate statistics
+    const { data, error } = await supabase.rpc('get_admin_statistics');
     
-    if (statsError) {
-      console.error('Error fetching admin stats from view:', statsError);
-      
-      // Fallback: try using the function instead
-      const { data: functionData, error: functionError } = await supabase
-        .rpc('get_admin_dashboard_stats');
-      
-      if (functionError) {
-        console.error('Error calling admin stats function:', functionError);
-        throw new ApiError('Failed to fetch admin statistics');
-      }
-      
-      // Parse the JSON result from the function
-      const parsedStats = functionData;
-      return {
-        registeredUsers: parsedStats.registered_users || 0,
-        activeUsers: parsedStats.active_users || 0,
-        expiredUsers: parsedStats.expired_users || 0,
-        renewedUsers: parsedStats.renewed_users || 0,
-        expiringSoon: parsedStats.expiring_soon || 0,
-        totalLogs: parsedStats.total_logs || 0,
-        toolUsage: parsedStats.tool_usage || {
-          planner: { total: 0, day: 0, month: 0 },
-          meal: { total: 0, day: 0, month: 0 },
-          emotion: { total: 0, day: 0, month: 0 }
-        },
-        geminiCost: parsedStats.gemini_cost || {
-          total: 0,
-          month: 0,
-          day: 0
-        }
-      };
+    if (error) {
+      console.error('Error fetching admin stats:', error);
+      throw new ApiError('Failed to fetch admin statistics');
     }
-
-    // Use the view data directly
-    const stats = statsData;
-    return {
-      registeredUsers: stats.registered_users || 0,
-      activeUsers: stats.active_users || 0,
-      expiredUsers: stats.expired_users || 0,
-      renewedUsers: stats.renewed_users || 0,
-      expiringSoon: stats.expiring_soon || 0,
-      totalLogs: stats.total_logs || 0,
-      toolUsage: {
-        planner: { 
-          total: stats.planner_total || 0, 
-          day: stats.planner_day || 0, 
-          month: stats.planner_month || 0 
-        },
-        meal: { 
-          total: stats.meal_total || 0, 
-          day: stats.meal_day || 0, 
-          month: stats.meal_month || 0 
-        },
-        emotion: { 
-          total: stats.emotion_total || 0, 
-          day: stats.emotion_day || 0, 
-          month: stats.emotion_month || 0 
-        }
-      },
-      geminiCost: {
-        total: stats.gemini_cost_total || 0,
-        month: stats.gemini_cost_month || 0,
-        day: stats.gemini_cost_day || 0
-      }
-    };
-
-  } catch (error) {
-    console.error('Error in getAdminStats:', error);
     
-    // Return fallback data with zeros if everything fails
-    return {
+    return data || {
       registeredUsers: 0,
       activeUsers: 0,
       expiredUsers: 0,
@@ -1268,6 +1199,9 @@ export const getAdminStats = async () => {
         day: 0
       }
     };
+  } catch (error: any) {
+    console.error('Error in getAdminStats:', error);
+    throw error instanceof ApiError ? error : new ApiError('Failed to fetch admin statistics');
   }
 };
 
