@@ -1169,11 +1169,86 @@ export const getRecipeHistory = getSingleRecipeRuns;
 export const getEmotionLogHistory = getEmotionLogs;
 
 // Admin Functions
-export const getAdminStats = async () => {
+
+// Function to refresh admin stats using your Edge Function
+export const refreshAdminStats = async () => {
+  try {
+    console.log('Refreshing admin stats via Edge Function...');
+    
+    // Call your Supabase Edge Function to update the admin_dashboard_stats table
+    const response = await fetch('https://usbvlkjoeujncihgjvzw.supabase.co/functions/v1/admin-stats-updater', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    
+    if (!response.ok) {
+      console.warn('Edge Function call failed, but continuing with existing stats');
+      return false;
+    }
+    
+    const result = await response.json();
+    console.log('Admin stats refreshed successfully:', result);
+    return true;
+  } catch (error) {
+    console.warn('Failed to refresh admin stats via Edge Function:', error);
+    return false; // Don't throw error, just continue with existing stats
+  }
+};
+
+export const getAdminStats = async (forceRefresh = false) => {
   const supabase = getSupabase();
   
   try {
-    // Use the database function for accurate statistics
+    // Optionally refresh stats first using Edge Function
+    if (forceRefresh) {
+      await refreshAdminStats();
+    }
+    
+    // Try to get stats from admin_dashboard_stats table first (faster)
+    const { data: tableStats, error: tableError } = await supabase
+      .from('admin_dashboard_stats')
+      .select('*')
+      .eq('idx', 0)
+      .single();
+    
+    if (!tableError && tableStats) {
+      console.log('Using admin_dashboard_stats table data');
+      return {
+        registeredUsers: tableStats.registered_users || 0,
+        activeUsers: tableStats.active_users || 0,
+        expiredUsers: tableStats.expired_users || 0,
+        renewedUsers: tableStats.renewed_users || 0,
+        expiringSoon: tableStats.expiring_soon || 0,
+        totalLogs: tableStats.total_logs || 0,
+        toolUsage: {
+          planner: { 
+            total: tableStats.planner_total || 0, 
+            day: tableStats.planner_day || 0, 
+            month: tableStats.planner_month || 0 
+          },
+          meal: { 
+            total: tableStats.meal_total || 0, 
+            day: tableStats.meal_day || 0, 
+            month: tableStats.meal_month || 0 
+          },
+          emotion: { 
+            total: tableStats.emotion_total || 0, 
+            day: tableStats.emotion_day || 0, 
+            month: tableStats.emotion_month || 0 
+          }
+        },
+        geminiCost: {
+          total: parseFloat(tableStats.gemini_cost_total || '0'),
+          month: parseFloat(tableStats.gemini_cost_month || '0'),
+          day: parseFloat(tableStats.gemini_cost_day || '0')
+        }
+      };
+    }
+    
+    // Fallback to database function if table doesn't have data
+    console.log('Falling back to database function');
     const { data, error } = await supabase.rpc('get_admin_statistics');
     
     if (error) {
