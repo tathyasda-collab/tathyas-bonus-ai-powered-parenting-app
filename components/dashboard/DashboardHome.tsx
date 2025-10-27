@@ -45,12 +45,16 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({ setActiveView }) =
       
       // Fetch complete user profile
       api.getUserProfile(user.id).then((profile) => {
+        console.log('Dashboard received profile:', profile);
         setFullProfile(profile);
       });
     }
   }, [user]);
 
   const greeting = `Welcome back, ${fullProfile?.name || fullProfile?.full_name || profile?.full_name || user?.email}!`;
+
+  console.log('Dashboard fullProfile state:', fullProfile);
+  console.log('Dashboard profile state:', profile);
 
   // Edit handlers
   const handleEditUser = () => {

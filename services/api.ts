@@ -509,7 +509,92 @@ export const getUserProfile = async (userId: string): Promise<UserProfile | null
   
   console.log('getUserProfile called with userId:', userId);
   
-  // First try to get user profile from app_users table by user_id
+  // Get user email from localStorage for fallback searches
+  const userSession = localStorage.getItem('user_session');
+  let userEmail = '';
+  if (userSession) {
+    try {
+      const userData = JSON.parse(userSession);
+      userEmail = userData.email;
+      console.log('Found email in session:', userEmail);
+    } catch (e) {
+      console.log('Failed to parse user session');
+    }
+  }
+
+  // Try user_profiles table first (since that's where your data seems to be)
+  const { data: userProfileData, error: userProfileError } = await supabase
+    .from('user_profiles')
+    .select('*')
+    .eq('user_id', userId)
+    .single();
+    
+  console.log('user_profiles query by user_id result:', { data: userProfileData, error: userProfileError });
+  
+  if (!userProfileError && userProfileData) {
+    console.log('Found data in user_profiles by user_id, returning profile');
+    return {
+      id: userProfileData.user_id,
+      email: userProfileData.email,
+      full_name: userProfileData.name || userProfileData.full_name,
+      gender: userProfileData.gender,
+      age: userProfileData.age,
+      phone: userProfileData.phone,
+      spouse_name: userProfileData.spouse_name,
+      spouse_gender: userProfileData.spouse_gender,
+      spouse_age: userProfileData.spouse_age,
+      street_address: userProfileData.street || userProfileData.street_address,
+      address: userProfileData.address,
+      district: userProfileData.district,
+      state: userProfileData.state,
+      pin_code: userProfileData.pincode || userProfileData.pin_code,
+      baby_name: userProfileData.baby_name,
+      baby_gender: userProfileData.baby_gender,
+      baby_date_of_birth: userProfileData.baby_date_of_birth,
+      role: userProfileData.role || 'user',
+      created_at: userProfileData.created_at,
+      updated_at: userProfileData.updated_at
+    };
+  }
+
+  // If user_profiles by user_id failed and we have email, try by email
+  if (userEmail) {
+    const { data: userProfileByEmail, error: userProfileEmailError } = await supabase
+      .from('user_profiles')
+      .select('*')
+      .eq('email', userEmail)
+      .single();
+      
+    console.log('user_profiles query by email result:', { data: userProfileByEmail, error: userProfileEmailError });
+      
+    if (!userProfileEmailError && userProfileByEmail) {
+      console.log('Found data in user_profiles by email, returning profile');
+      return {
+        id: userProfileByEmail.user_id,
+        email: userProfileByEmail.email,
+        full_name: userProfileByEmail.name || userProfileByEmail.full_name,
+        gender: userProfileByEmail.gender,
+        age: userProfileByEmail.age,
+        phone: userProfileByEmail.phone,
+        spouse_name: userProfileByEmail.spouse_name,
+        spouse_gender: userProfileByEmail.spouse_gender,
+        spouse_age: userProfileByEmail.spouse_age,
+        street_address: userProfileByEmail.street || userProfileByEmail.street_address,
+        address: userProfileByEmail.address,
+        district: userProfileByEmail.district,
+        state: userProfileByEmail.state,
+        pin_code: userProfileByEmail.pincode || userProfileByEmail.pin_code,
+        baby_name: userProfileByEmail.baby_name,
+        baby_gender: userProfileByEmail.baby_gender,
+        baby_date_of_birth: userProfileByEmail.baby_date_of_birth,
+        role: userProfileByEmail.role || 'user',
+        created_at: userProfileByEmail.created_at,
+        updated_at: userProfileByEmail.updated_at
+      };
+    }
+  }
+
+  // Try app_users table as fallback
   const { data: appUserProfileData, error: appUserProfileError } = await supabase
     .from('app_users')
     .select('*')
@@ -520,7 +605,7 @@ export const getUserProfile = async (userId: string): Promise<UserProfile | null
     
   if (!appUserProfileError && appUserProfileData) {
     console.log('Found data in app_users by user_id, returning profile');
-    return {
+    const profileResult = {
       id: appUserProfileData.user_id,
       email: appUserProfileData.email,
       full_name: appUserProfileData.name,
@@ -542,22 +627,12 @@ export const getUserProfile = async (userId: string): Promise<UserProfile | null
       created_at: appUserProfileData.created_at,
       updated_at: appUserProfileData.updated_at
     };
+    console.log('Mapped profile result:', profileResult);
+    console.log('Raw database data:', appUserProfileData);
+    return profileResult;
   }
 
-  // Try to get user email from localStorage to search by email as fallback
-  const userSession = localStorage.getItem('user_session');
-  let userEmail = '';
-  if (userSession) {
-    try {
-      const userData = JSON.parse(userSession);
-      userEmail = userData.email;
-      console.log('Found email in session:', userEmail);
-    } catch (e) {
-      console.log('Failed to parse user session');
-    }
-  }
-
-  // If we have an email, try to find the profile by email
+  // Try app_users by email as final fallback
   if (userEmail) {
     const { data: appUserByEmail, error: emailError } = await supabase
       .from('app_users')
@@ -593,6 +668,9 @@ export const getUserProfile = async (userId: string): Promise<UserProfile | null
       };
     }
   }
+
+  console.log('No profile data found in any table');
+  return null;
   
   // Fallback to user_profiles table if no app_users record found
   const { data: profileData, error: profileError } = await supabase
