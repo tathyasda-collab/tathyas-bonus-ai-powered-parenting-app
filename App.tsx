@@ -1,8 +1,9 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { SpeedInsights } from '@vercel/speed-insights/react';
 import { Analytics } from '@vercel/analytics/react';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
+import { initPerformanceTracking } from './services/performanceApi';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ErrorProvider } from './context/ErrorContext';
 import { LoginPage } from './components/auth/LoginPage';
@@ -61,6 +62,11 @@ const AppContent: React.FC = () => {
 
 
 function App() {
+    useEffect(() => {
+        // Initialize performance tracking
+        initPerformanceTracking();
+    }, []);
+
     return (
         <ThemeProvider>
             <ErrorProvider>

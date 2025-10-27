@@ -6,6 +6,7 @@ import * as api from '../../services/api';
 import { ApiError } from '../../types';
 import { Loader } from '../shared/Loader';
 import { IntegrationSettings } from './IntegrationSettings';
+import PerformanceAnalytics from './PerformanceAnalytics';
 import JSZip from 'jszip';
 
 const StatCard: React.FC<{ title: string; value: number | string; icon: React.ReactNode; className?: string }> = ({ title, value, icon, className = '' }) => (
@@ -155,7 +156,7 @@ const AdminDashboard: React.FC = () => {
     const [renewalLink, setRenewalLink] = useState('');
     const [isDownloading, setIsDownloading] = useState(false);
     const [isRefreshing, setIsRefreshing] = useState(false);
-    const [view, setView] = useState<'dashboard' | 'integrations'>('dashboard');
+    const [view, setView] = useState<'dashboard' | 'integrations' | 'performance'>('dashboard');
 
     useEffect(() => {
         const fetchData = async () => {
@@ -368,10 +369,17 @@ const AdminDashboard: React.FC = () => {
                                 <Button onClick={handleUpdateLink} className="w-full mt-2 bg-blue-600 hover:bg-blue-700 text-white">Update Link</Button>
                             </div>
                             <div>
-                                <Button onClick={() => setView('integrations')} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white flex items-center justify-center">
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                                    Integration Settings
-                                </Button>
+                                <h4 className="text-sm font-medium mb-2">Admin Tools</h4>
+                                <div className="space-y-2">
+                                    <Button onClick={() => setView('performance')} className="w-full bg-purple-600 hover:bg-purple-700 text-white flex items-center justify-center">
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+                                        Performance Analytics
+                                    </Button>
+                                    <Button onClick={() => setView('integrations')} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white flex items-center justify-center">
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                        Integration Settings
+                                    </Button>
+                                </div>
                             </div>
                              <div>
                                 <h4 className="text-sm font-medium mb-2">Data Management</h4>
@@ -430,11 +438,35 @@ const AdminDashboard: React.FC = () => {
         </>
     );
 
+    const renderView = () => {
+        switch (view) {
+            case 'performance':
+                return (
+                    <div>
+                        <div className="flex items-center mb-6">
+                            <Button
+                                onClick={() => setView('dashboard')}
+                                className="bg-gray-600 hover:bg-gray-700 text-white mr-4"
+                            >
+                                ← Back to Dashboard
+                            </Button>
+                            <h1 className="text-2xl font-bold">Performance Analytics</h1>
+                        </div>
+                        <PerformanceAnalytics />
+                    </div>
+                );
+            case 'integrations':
+                return <IntegrationSettings onBack={() => setView('dashboard')} />;
+            default:
+                return renderDashboard();
+        }
+    };
+
     return (
         <div>
             <Header />
             <main className="p-4 sm:p-8 bg-gray-50 dark:bg-gray-900/50 min-h-[calc(100vh-112px)]">
-                {view === 'dashboard' ? renderDashboard() : <IntegrationSettings onBack={() => setView('dashboard')} />}
+                {renderView()}
             </main>
         </div>
     );
