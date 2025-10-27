@@ -507,44 +507,6 @@ export const getCurrentUser = async () => {
 export const getUserProfile = async (userId: string): Promise<UserProfile | null> => {
   const supabase = getSupabase();
   
-  // Check if this is our target user by userId OR by checking localStorage for email
-  const userSession = localStorage.getItem('user_session');
-  let userEmail = '';
-  if (userSession) {
-    try {
-      const userData = JSON.parse(userSession);
-      userEmail = userData.email;
-    } catch (e) {
-      // Failed to parse session
-    }
-  }
-  
-  // Force return hardcoded data for dostvineet@gmail.com
-  if (userId === 'e6a8c71f-3c71-4dcf-a675-e66118ac6c32' || userEmail === 'dostvineet@gmail.com') {
-    return {
-      id: 'e6a8c71f-3c71-4dcf-a675-e66118ac6c32',
-      email: 'dostvineet@gmail.com',
-      full_name: 'Vineet Gupta',
-      gender: 'Male',
-      age: 44,
-      phone: null,
-      spouse_name: 'Shefali GUpta',
-      spouse_gender: 'Female',
-      spouse_age: 33,
-      street_address: '123 Street',
-      address: 'Lekhu Nagar, Tri Nagar.',
-      district: 'Northwest Delhi',
-      state: 'Delhi',
-      pin_code: '110035',
-      baby_name: null,
-      baby_gender: null,
-      baby_date_of_birth: null,
-      role: 'user',
-      created_at: '2025-10-16T17:38:20.488864+00:00',
-      updated_at: '2025-10-16T17:38:20.488864+00:00'
-    };
-  }
-  
   // First try to get user profile from app_users table
   const { data: appUserProfileData, error: appUserProfileError } = await supabase
     .from('app_users')
