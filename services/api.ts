@@ -433,6 +433,67 @@ export const getCurrentUser = async () => {
   return user;
 };
 
+// Get user subscription info for header display
+export const getUserSubscriptionInfo = async (userEmail: string) => {
+  const supabase = getSupabase();
+  
+  try {
+    const { data, error } = await supabase.rpc('get_user_subscription_info', {
+      user_email: userEmail
+    });
+    
+    if (error) {
+      console.warn('Failed to get subscription info:', error);
+      return null;
+    }
+    
+    return data;
+  } catch (error) {
+    console.error('Error getting subscription info:', error);
+    return null;
+  }
+};
+
+// Renew user subscription
+export const renewUserSubscription = async (userEmail: string) => {
+  const supabase = getSupabase();
+  
+  try {
+    const { data, error } = await supabase.rpc('renew_user_subscription', {
+      user_email: userEmail
+    });
+    
+    if (error) {
+      throw new ApiError('Failed to renew subscription: ' + error.message);
+    }
+    
+    return data;
+  } catch (error) {
+    console.error('Error renewing subscription:', error);
+    throw error;
+  }
+};
+
+// Update renewal URL (admin function)
+export const updateRenewalUrl = async (newUrl: string) => {
+  const supabase = getSupabase();
+  
+  try {
+    const { data, error } = await supabase.rpc('update_renewal_url', {
+      new_url: newUrl
+    });
+    
+    if (error) {
+      throw new ApiError('Failed to update renewal URL: ' + error.message);
+    }
+    
+    return data;
+  } catch (error) {
+    console.error('Error updating renewal URL:', error);
+    throw error;
+  }
+};
+
 // User Data Functions
 export const getUserProfile = async (userId: string): Promise<UserProfile | null> => {
   const supabase = getSupabase();

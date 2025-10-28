@@ -11,7 +11,8 @@ export const Header: React.FC = () => {
   const { user, profile } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const [fullProfile, setFullProfile] = useState<any>(null);
-  const [daysRemaining, setDaysRemaining] = useState<UserDaysRemaining | null>(null);
+  const [subscriptionInfo, setSubscriptionInfo] = useState<any>(null);
+  const [showRenewalDialog, setShowRenewalDialog] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -22,7 +23,19 @@ export const Header: React.FC = () => {
         console.log('Header received profile:', profile);
         setFullProfile(profile);
       });
-      api.getUserDaysRemaining().then(setDaysRemaining);
+      
+      // Get subscription info for header display
+      if (user.email) {
+        api.getUserSubscriptionInfo(user.email).then((subInfo) => {
+          console.log('Header subscription info:', subInfo);
+          setSubscriptionInfo(subInfo);
+          
+          // Show renewal dialog if needed
+          if (subInfo?.needs_renewal_reminder) {
+            setShowRenewalDialog(true);
+          }
+        });
+      }
     }
   }, [user]);
 
@@ -69,11 +82,11 @@ export const Header: React.FC = () => {
               </div>
 
               {/* Subscription Days Remaining */}
-              {daysRemaining && (
+              {subscriptionInfo && (
                 <div className={`hidden md:flex items-center gap-2 px-3 py-2 rounded-full backdrop-blur-sm border ${
-                  daysRemaining.days_remaining <= 3 
+                  subscriptionInfo.days_remaining <= 3 
                     ? 'bg-red-500/20 border-red-300/30 text-red-200' 
-                    : daysRemaining.days_remaining <= 7 
+                    : subscriptionInfo.days_remaining <= 7 
                     ? 'bg-yellow-500/20 border-yellow-300/30 text-yellow-200' 
                     : 'bg-green-500/20 border-green-300/30 text-green-200'
                 }`}>
@@ -81,9 +94,13 @@ export const Header: React.FC = () => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                   </svg>
                   <span className="text-sm font-medium">
-                    {daysRemaining.is_active 
-                      ? `${daysRemaining.days_remaining} days left` 
-                      : 'Expired'
+                    {subscriptionInfo.status === 'renewed'
+                      ? 'Renewed'
+                      : subscriptionInfo.status === 'expired'
+                      ? 'Expired'
+                      : subscriptionInfo.days_remaining !== null
+                      ? `${subscriptionInfo.days_remaining} days left`
+                      : 'Active'
                     }
                   </span>
                 </div>
@@ -120,6 +137,44 @@ export const Header: React.FC = () => {
           )}
         </div>
       </div>
+      
+      {/* Renewal Reminder Dialog */}
+      {showRenewalDialog && subscriptionInfo?.needs_renewal_reminder && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6">
+            <div className="flex items-start gap-3">
+              <div className="flex-shrink-0">
+                <svg className="h-6 w-6 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                  Subscription Expiring Soon
+                </h3>
+                <p className="text-gray-600 dark:text-gray-300 mb-4">
+                  Your subscription expires in {subscriptionInfo.days_remaining} days. 
+                  Renew now to continue enjoying all features without interruption.
+                </p>
+                <div className="flex gap-3">
+                  <Button
+                    onClick={() => window.open(subscriptionInfo.renewal_url, '_blank')}
+                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                  >
+                    Renew Now
+                  </Button>
+                  <Button
+                    onClick={() => setShowRenewalDialog(false)}
+                    className="bg-gray-300 hover:bg-gray-400 text-gray-700"
+                  >
+                    Remind Later
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </header>
   );
 };
