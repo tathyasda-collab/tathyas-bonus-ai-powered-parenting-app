@@ -84,7 +84,7 @@ export const LoginPage: React.FC = () => {
         <div className="text-center mb-8">
           <div className="flex justify-center items-center mb-4">
             <div className="relative">
-              <img src={LOGO_URL} alt="Logo" className="h-16 w-16 filter brightness-0 invert rounded-xl pulse-glow" />
+              <img src={LOGO_URL} alt="Logo" className="h-16 w-16 rounded-xl pulse-glow" />
               <div className="absolute -top-2 -right-2 w-4 h-4 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full sparkle"></div>
             </div>
           </div>

@@ -1,0 +1,124 @@
+# AWS CloudFormation Template for Tathyas Parenting App Infrastructure
+
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Infrastructure for Tathyas AI-Powered Parenting App'
+
+Parameters:
+  DomainName:
+    Type: String
+    Default: 'bonusaiapp.tathyas.in'
+    Description: 'Domain name for the application'
+  
+  CertificateArn:
+    Type: String
+    Description: 'ARN of the SSL certificate for the domain'
+  
+  HostedZoneId:
+    Type: String
+    Description: 'Route 53 Hosted Zone ID for tathyas.in'
+
+Resources:
+  # S3 Bucket for hosting static files
+  AppBucket:
+    Type: 'AWS::S3::Bucket'
+    Properties:
+      BucketName: 'tathyas-parenting-app'
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: false
+        BlockPublicPolicy: false
+        IgnorePublicAcls: false
+        RestrictPublicBuckets: false
+      WebsiteConfiguration:
+        IndexDocument: 'index.html'
+        ErrorDocument: 'index.html'
+  
+  # S3 Bucket Policy for public access
+  AppBucketPolicy:
+    Type: 'AWS::S3::BucketPolicy'
+    Properties:
+      Bucket: !Ref AppBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: 'PublicReadGetObject'
+            Effect: 'Allow'
+            Principal: '*'
+            Action: 's3:GetObject'
+            Resource: !Sub '${AppBucket}/*'
+  
+  # CloudFront Origin Access Identity
+  OriginAccessIdentity:
+    Type: 'AWS::CloudFront::OriginAccessIdentity'
+    Properties:
+      OriginAccessIdentityConfig:
+        Comment: 'OAI for Tathyas Parenting App'
+  
+  # CloudFront Distribution
+  CloudFrontDistribution:
+    Type: 'AWS::CloudFront::Distribution'
+    Properties:
+      DistributionConfig:
+        Aliases:
+          - !Ref DomainName
+        Comment: 'Tathyas AI Parenting App Distribution'
+        DefaultCacheBehavior:
+          TargetOriginId: 'S3Origin'
+          ViewerProtocolPolicy: 'redirect-to-https'
+          CachePolicyId: '4135ea2d-6df8-44a3-9df3-4b5a84be39ad' # Managed-CachingDisabled
+          OriginRequestPolicyId: '88a5eaf4-2fd4-4709-b370-b4c650ea3fcf' # Managed-CORS-S3Origin
+        DefaultRootObject: 'index.html'
+        Enabled: true
+        HttpVersion: 'http2'
+        Origins:
+          - Id: 'S3Origin'
+            DomainName: !GetAtt AppBucket.RegionalDomainName
+            S3OriginConfig:
+              OriginAccessIdentity: !Sub 'origin-access-identity/cloudfront/${OriginAccessIdentity}'
+        ViewerCertificate:
+          AcmCertificateArn: !Ref CertificateArn
+          SslSupportMethod: 'sni-only'
+          MinimumProtocolVersion: 'TLSv1.2_2021'
+        CustomErrorResponses:
+          - ErrorCode: 404
+            ResponseCode: 200
+            ResponsePagePath: '/index.html'
+          - ErrorCode: 403
+            ResponseCode: 200
+            ResponsePagePath: '/index.html'
+  
+  # Route 53 Record
+  DNSRecord:
+    Type: 'AWS::Route53::RecordSet'
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Name: !Ref DomainName
+      Type: 'A'
+      AliasTarget:
+        DNSName: !GetAtt CloudFrontDistribution.DomainName
+        HostedZoneId: 'Z2FDTNDATAQYW2' # CloudFront Hosted Zone ID
+        EvaluateTargetHealth: false
+
+Outputs:
+  BucketName:
+    Description: 'S3 Bucket Name'
+    Value: !Ref AppBucket
+    Export:
+      Name: 'TathyasParentingApp-BucketName'
+  
+  DistributionId:
+    Description: 'CloudFront Distribution ID'
+    Value: !Ref CloudFrontDistribution
+    Export:
+      Name: 'TathyasParentingApp-DistributionId'
+  
+  DistributionDomainName:
+    Description: 'CloudFront Distribution Domain Name'
+    Value: !GetAtt CloudFrontDistribution.DomainName
+    Export:
+      Name: 'TathyasParentingApp-DistributionDomainName'
+  
+  AppURL:
+    Description: 'Application URL'
+    Value: !Sub 'https://${DomainName}'
+    Export:
+      Name: 'TathyasParentingApp-URL'

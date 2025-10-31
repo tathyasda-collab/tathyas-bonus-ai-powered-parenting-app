@@ -1,0 +1,15 @@
+# Supabase Edge Functions Configuration
+
+project_id = "your-project-id"
+
+[functions.generate-parenting-plan]
+verify_jwt = false
+
+[functions.generate-meal-plan]
+verify_jwt = false
+
+[functions.generate-single-recipe]
+verify_jwt = false
+
+[functions.get-emotion-support]
+verify_jwt = false

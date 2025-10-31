@@ -31,7 +31,7 @@ export const Header: React.FC = () => {
           setSubscriptionInfo(subInfo);
           
           // Show renewal dialog if needed
-          if (subInfo?.needs_renewal_reminder) {
+          if (subInfo?.renewal_needed) {
             setShowRenewalDialog(true);
           }
         });
@@ -139,7 +139,7 @@ export const Header: React.FC = () => {
       </div>
       
       {/* Renewal Reminder Dialog */}
-      {showRenewalDialog && subscriptionInfo?.needs_renewal_reminder && (
+      {showRenewalDialog && subscriptionInfo?.renewal_needed && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6">
             <div className="flex items-start gap-3">

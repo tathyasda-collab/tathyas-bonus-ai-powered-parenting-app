@@ -5,14 +5,17 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview"
+    "build": "tsc && vite build",
+    "build:prod": "tsc && vite build --mode production",
+    "preview": "vite preview",
+    "deploy": "npm run build:prod && aws s3 sync dist/ s3://tathyas-parenting-app --delete",
+    "deploy:full": "chmod +x deployment/deploy.sh && ./deployment/deploy.sh"
   },
   "dependencies": {
-    "@google/genai": "0.14.0",
-    "@supabase/supabase-js": "2.44.4",
+    "@supabase/supabase-js": "^2.44.4",
     "@vercel/analytics": "^1.5.0",
     "@vercel/speed-insights": "^1.2.0",
+    "dotenv": "^17.2.3",
     "jszip": "^3.10.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

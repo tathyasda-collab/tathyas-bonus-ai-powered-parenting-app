@@ -9,40 +9,53 @@ import { IntegrationSettings } from './IntegrationSettings';
 import PerformanceAnalytics from './PerformanceAnalytics';
 import JSZip from 'jszip';
 
-const StatCard: React.FC<{ title: string; value: number | string; icon: React.ReactNode; className?: string }> = ({ title, value, icon, className = '' }) => (
+const StatCard: React.FC<{ title: string; value: number | string; icon: React.ReactNode; className?: string; subtitle?: string }> = ({ title, value, icon, className = '', subtitle }) => (
     <Card className={`flex items-center p-4 ${className}`}>
         <div className="p-3 rounded-full bg-opacity-20 text-2xl mr-4">{icon}</div>
-        <div>
-            <h4 className="font-bold text-gray-600 dark:text-gray-300">{title}</h4>
-            <p className="text-3xl font-semibold">{value}</p>
+        <div className="flex-1">
+            <h4 className="font-bold text-gray-600 dark:text-gray-300 text-sm">{title}</h4>
+            <p className="text-2xl font-semibold">{value}</p>
+            {subtitle && <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{subtitle}</p>}
+        </div>
+    </Card>
+);
+
+const MetricCard: React.FC<{ title: string; metrics: Array<{ label: string; value: number | string; color?: string }> }> = ({ title, metrics }) => (
+    <Card className="p-4">
+        <h3 className="text-lg font-semibold mb-4 border-b pb-2 dark:border-gray-700">{title}</h3>
+        <div className="space-y-3">
+            {metrics.map((metric, index) => (
+                <div key={index} className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600 dark:text-gray-300">{metric.label}</span>
+                    <span className={`font-semibold ${metric.color || 'text-gray-900 dark:text-gray-100'}`}>
+                        {metric.value}
+                    </span>
+                </div>
+            ))}
         </div>
     </Card>
 );
 
 const ProductivityChart: React.FC<{ stats: any }> = ({ stats }) => {
-    if (!stats?.toolUsage || !stats?.geminiCost) return null;
+    if (!stats) return null;
 
-    const { toolUsage, registeredUsers, geminiCost } = stats;
-
+    // Use the correct structure from getAdminStats() function
     const tools = [
-        { name: 'Parenting Planner', data: toolUsage.planner, color: 'bg-emerald-500' },
-        { name: 'Meal Assistant', data: toolUsage.meal, color: 'bg-sky-500' },
-        { name: 'Emotion Check-in', data: toolUsage.emotion, color: 'bg-purple-500' },
+        { name: 'Parenting Planner', data: stats.toolUsage?.planner || { total: 0, day: 0, month: 0 }, color: 'bg-emerald-500' },
+        { name: 'Meal Assistant', data: stats.toolUsage?.meal || { total: 0, day: 0, month: 0 }, color: 'bg-sky-500' },
+        { name: 'Emotion Check-in', data: stats.toolUsage?.emotion || { total: 0, day: 0, month: 0 }, color: 'bg-purple-500' },
     ];
     
     const totalUsageValues = tools.map(t => t.data.total);
-    const maxUsage = Math.max(...totalUsageValues, 1); // Avoid division by zero
+    const maxUsage = Math.max(...totalUsageValues, 1);
     
-    // Changed: `totalInteractions` now comes from stats.totalLogs, which is sourced from the `total_logs` field.
-    const totalInteractions = stats.totalLogs ?? 0;
-    
+    const totalInteractions = stats.totalLogs || 0;
     const meanUsage = tools.length > 0 ? totalInteractions / tools.length : 0;
     const meanLinePosition = (meanUsage / maxUsage) * 100;
 
-    const avgCostPerInteraction = totalInteractions > 0 ? geminiCost.total / totalInteractions : 0;
-    const interactionsPerUser = registeredUsers > 0 ? totalInteractions / registeredUsers : 0;
+    const avgCostPerInteraction = totalInteractions > 0 ? (stats.geminiCost?.total || 0) / totalInteractions : 0;
+    const interactionsPerUser = (stats.registeredUsers || 0) > 0 ? totalInteractions / stats.registeredUsers : 0;
 
-    // Added: Calculate totals for the new footer row in the breakdown table.
     const breakdownTotalUsage = tools.reduce((sum, tool) => sum + tool.data.total, 0);
     const breakdownTotalDay = tools.reduce((sum, tool) => sum + tool.data.day, 0);
     const breakdownTotalMonth = tools.reduce((sum, tool) => sum + tool.data.month, 0);
@@ -58,7 +71,7 @@ const ProductivityChart: React.FC<{ stats: any }> = ({ stats }) => {
 
     return (
         <Card>
-            <h3 className="text-xl font-semibold mb-4">Tool Productivity Overview</h3>
+            <h3 className="text-xl font-semibold mb-4">Tool Usage Analytics</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center mb-6 border-b dark:border-gray-700 pb-6">
                 <div>
                     <p className="text-gray-500 dark:text-gray-400 text-sm font-bold">Total Interactions</p>
@@ -75,7 +88,6 @@ const ProductivityChart: React.FC<{ stats: any }> = ({ stats }) => {
             </div>
 
             <div className="relative flex justify-around items-end h-64 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                 {/* Mean Line */}
                 {meanUsage > 0 && (
                     <div 
                         className="absolute w-full left-0 border-t-2 border-dashed border-red-500" 
@@ -94,7 +106,7 @@ const ProductivityChart: React.FC<{ stats: any }> = ({ stats }) => {
 
                     return (
                         <div key={tool.name} className="flex flex-col items-center w-1/4 h-full text-center z-10">
-                             <div className="relative w-16 h-full flex flex-col justify-end group">
+                            <div className="relative w-16 h-full flex flex-col justify-end group">
                                 <div 
                                     className={`${tool.color} w-full transition-all duration-300 hover:opacity-80`} 
                                     style={{ height: `${barHeight}%` }} 
@@ -109,7 +121,6 @@ const ProductivityChart: React.FC<{ stats: any }> = ({ stats }) => {
                 })}
             </div>
 
-            {/* Restored Usage Breakdown Table */}
             <div className="mt-6 pt-4 border-t dark:border-gray-700">
                 <h4 className="font-semibold text-lg mb-2">Usage Breakdown</h4>
                 <div className="overflow-x-auto">
@@ -132,7 +143,6 @@ const ProductivityChart: React.FC<{ stats: any }> = ({ stats }) => {
                                 </tr>
                             ))}
                         </tbody>
-                        {/* Added: Footer with subtotals for the usage breakdown. */}
                         <tfoot className="border-t-2 border-gray-200 dark:border-gray-600">
                             <tr className="font-bold bg-gray-100 dark:bg-gray-700/50">
                                 <td className="p-3">Total</td>
@@ -163,11 +173,7 @@ const AdminDashboard: React.FC = () => {
             setLoading(true);
             setError(null);
             try {
-                // Temporarily disable Edge Function refresh to debug auth issues
-                // console.log('Refreshing admin statistics before loading dashboard...');
-                // await api.refreshAdminStats();
-                
-                // Now fetch the stats without refresh for debugging
+                // Fetch stats directly from view
                 const adminStats = await api.getAdminStats();
                 const link = await api.getRenewalLink();
                 setStats(adminStats);
@@ -299,15 +305,6 @@ const AdminDashboard: React.FC = () => {
             setIsRefreshing(false);
         }
     };
-    
-    const formatCurrency = (amount: number) => {
-        return new Intl.NumberFormat('en-IN', {
-            style: 'currency',
-            currency: 'INR',
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-        }).format(amount);
-    };
 
     if (loading) {
         return (
@@ -336,30 +333,91 @@ const AdminDashboard: React.FC = () => {
         )
     }
 
-    const statCards = [
-        { title: 'Total Registered Users', value: stats.registeredUsers, icon: '📝', className: 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-300' },
-        { title: 'Active Subscriptions', value: stats.activeUsers, icon: '👥', className: 'bg-green-100 dark:bg-green-900/50 text-green-600 dark:text-green-300' },
-        { title: 'Expired Accounts', value: stats.expiredUsers, icon: '💔', className: 'bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-300' },
-        { title: 'Happy Renewals', value: stats.renewedUsers, icon: '✨', className: 'bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-300' },
-        { title: 'Renewals Due Soon', value: stats.expiringSoon, icon: '⏳', className: 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-600 dark:text-yellow-300' }
+    // Primary stats cards with comprehensive data
+    const primaryStats = [
+        { title: 'Total Users', value: stats.registeredUsers || 0, icon: '👥', className: 'bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-300', subtitle: `${(stats.registeredUsers || 0) - (stats.adminUsers || 0)} regular, ${stats.adminUsers || 0} admins` },
+        { title: 'Active Users', value: stats.activeUsers || 0, icon: '✅', className: 'bg-green-100 dark:bg-green-900/50 text-green-600 dark:text-green-300', subtitle: `${(stats.activeUsers || 0) - (stats.adminUsers || 0)} regular users active` },
+        { title: 'Expired Users', value: stats.expiredUsers || 0, icon: '⚠️', className: 'bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-300' },
+        { title: 'Expiring Soon', value: stats.expiringSoon || 0, icon: '⏰', className: 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-600 dark:text-yellow-300' },
+        { title: 'Total AI Logs', value: stats.totalLogs || 0, icon: '🤖', className: 'bg-purple-100 dark:bg-purple-900/50 text-purple-600 dark:text-purple-300' },
+    ];
+
+    // Tool usage metrics
+    const toolMetrics = [
+        { label: 'Planner (Total)', value: (stats.toolUsage?.planner?.total || 0).toLocaleString(), color: 'text-emerald-600 dark:text-emerald-400' },
+        { label: 'Planner (Today)', value: (stats.toolUsage?.planner?.day || 0).toLocaleString(), color: 'text-emerald-500' },
+        { label: 'Planner (Month)', value: (stats.toolUsage?.planner?.month || 0).toLocaleString(), color: 'text-emerald-500' },
+        { label: 'Meals (Total)', value: (stats.toolUsage?.meal?.total || 0).toLocaleString(), color: 'text-sky-600 dark:text-sky-400' },
+        { label: 'Meals (Today)', value: (stats.toolUsage?.meal?.day || 0).toLocaleString(), color: 'text-sky-500' },
+        { label: 'Meals (Month)', value: (stats.toolUsage?.meal?.month || 0).toLocaleString(), color: 'text-sky-500' },
+        { label: 'Emotions (Total)', value: (stats.toolUsage?.emotion?.total || 0).toLocaleString(), color: 'text-purple-600 dark:text-purple-400' },
+        { label: 'Emotions (Today)', value: (stats.toolUsage?.emotion?.day || 0).toLocaleString(), color: 'text-purple-500' },
+        { label: 'Emotions (Month)', value: (stats.toolUsage?.emotion?.month || 0).toLocaleString(), color: 'text-purple-500' },
+    ];
+
+    // AI cost metrics
+    const formatCurrency = (amount: number) => {
+        return new Intl.NumberFormat('en-IN', {
+            style: 'currency',
+            currency: 'INR',
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+        }).format(amount);
+    };
+
+    const costMetrics = [
+        { label: 'Total AI Cost', value: formatCurrency(stats.geminiCost?.total || 0), color: 'text-red-600 dark:text-red-400' },
+        { label: 'Gemini Total', value: formatCurrency(stats.geminiCost?.total || 0), color: 'text-orange-600 dark:text-orange-400' },
+        { label: 'Gemini (Month)', value: formatCurrency(stats.geminiCost?.month || 0), color: 'text-orange-500' },
+        { label: 'Gemini (Today)', value: formatCurrency(stats.geminiCost?.day || 0), color: 'text-orange-500' },
+        { label: 'Input Tokens', value: '0', color: 'text-blue-600 dark:text-blue-400' },
+        { label: 'Output Tokens', value: '0', color: 'text-indigo-600 dark:text-indigo-400' },
+    ];
+
+    // Performance metrics
+    const performanceMetrics = [
+        { label: 'Products Total', value: (stats.toolUsage?.product?.total || 0).toLocaleString(), color: 'text-green-600 dark:text-green-400' },
+        { label: 'Products (Today)', value: (stats.toolUsage?.product?.day || 0).toLocaleString(), color: 'text-green-500' },
+        { label: 'Products (Month)', value: (stats.toolUsage?.product?.month || 0).toLocaleString(), color: 'text-green-500' },
+        { label: 'Renewed Users', value: (stats.renewedUsers || 0).toLocaleString(), color: 'text-blue-600 dark:text-blue-400' },
+        { label: 'Last Updated', value: new Date(stats.lastUpdated || '').toLocaleString(), color: 'text-gray-600 dark:text-gray-400' },
     ];
 
     const renderDashboard = () => (
         <>
+            {/* Primary Statistics Row */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
-                {statCards.map(card => (
-                    <StatCard key={card.title} title={card.title} value={card.value} icon={card.icon} className={card.className} />
+                {primaryStats.map(card => (
+                    <StatCard key={card.title} title={card.title} value={card.value} icon={card.icon} className={card.className} subtitle={card.subtitle} />
                 ))}
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Left Column: Productivity Chart */}
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                {/* Tool Usage Analytics (takes up 2 columns) */}
                 <div className="lg:col-span-2">
                     <ProductivityChart stats={stats} />
                 </div>
 
-                {/* Right Column: Admin Actions & Costs */}
-                <div className="space-y-6">
+                {/* Tool Metrics */}
+                <div>
+                    <MetricCard title="Tool Usage Metrics" metrics={toolMetrics} />
+                </div>
+
+                {/* AI Cost Analysis */}
+                <div>
+                    <MetricCard title="AI Cost Analysis" metrics={costMetrics} />
+                </div>
+            </div>
+
+            {/* Secondary Stats Row */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
+                {/* Performance Metrics */}
+                <div>
+                    <MetricCard title="Performance Metrics" metrics={performanceMetrics} />
+                </div>
+
+                {/* Admin Tools */}
+                <div>
                     <Card>
                         <h3 className="text-xl font-semibold mb-4">Administrative Tools</h3>
                         <div className="space-y-6">
@@ -369,7 +427,7 @@ const AdminDashboard: React.FC = () => {
                                 <Button onClick={handleUpdateLink} className="w-full mt-2 bg-blue-600 hover:bg-blue-700 text-white">Update Link</Button>
                             </div>
                             <div>
-                                <h4 className="text-sm font-medium mb-2">Admin Tools</h4>
+                                <h4 className="text-sm font-medium mb-2">Quick Actions</h4>
                                 <div className="space-y-2">
                                     <Button onClick={() => setView('performance')} className="w-full bg-purple-600 hover:bg-purple-700 text-white flex items-center justify-center">
                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
@@ -377,29 +435,36 @@ const AdminDashboard: React.FC = () => {
                                     </Button>
                                     <Button onClick={() => setView('integrations')} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white flex items-center justify-center">
                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                                        Integration Settings
+                                        User Management
                                     </Button>
                                 </div>
                             </div>
-                             <div>
-                                <h4 className="text-sm font-medium mb-2">Data Management</h4>
-                                <div className="space-y-2">
-                                    <Button 
-                                        onClick={handleRefreshStats} 
-                                        disabled={isRefreshing}
-                                        className="w-full bg-orange-600 hover:bg-orange-700 text-white disabled:bg-orange-400 flex items-center justify-center"
-                                    >
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-                                        {isRefreshing ? 'Refreshing...' : 'Refresh Statistics'}
-                                    </Button>
-                                </div>
+                        </div>
+                    </Card>
+                </div>
+
+                {/* Data Management */}
+                <div>
+                    <Card>
+                        <h3 className="text-xl font-semibold mb-4">Data Management</h3>
+                        <div className="space-y-4">
+                            <div>
+                                <h4 className="text-sm font-medium mb-2">Statistics</h4>
+                                <Button 
+                                    onClick={handleRefreshStats} 
+                                    disabled={isRefreshing}
+                                    className="w-full bg-orange-600 hover:bg-orange-700 text-white disabled:bg-orange-400 flex items-center justify-center"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                                    {isRefreshing ? 'Refreshing...' : 'Refresh Stats'}
+                                </Button>
                             </div>
                             <div>
-                                <h4 className="text-sm font-medium mb-2">Data Exports</h4>
+                                <h4 className="text-sm font-medium mb-2">Export Data</h4>
                                 <div className="space-y-2">
                                     <Button onClick={handleDownloadExpiring} className="w-full bg-green-600 hover:bg-green-700 text-white flex items-center justify-center">
                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                                        Expiring Soon List
+                                        Expiring Users
                                     </Button>
                                     <Button 
                                         onClick={handleDownloadAll} 
@@ -407,32 +472,12 @@ const AdminDashboard: React.FC = () => {
                                         className="w-full bg-gray-600 hover:bg-gray-700 text-white disabled:bg-gray-400 flex items-center justify-center"
                                     >
                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                                        {isDownloading ? 'Downloading...' : 'Download All Data'}
+                                        {isDownloading ? 'Downloading...' : 'All Data'}
                                     </Button>
                                 </div>
                             </div>
                         </div>
                     </Card>
-
-                    {stats.geminiCost && (
-                        <Card>
-                            <h3 className="text-xl font-semibold mb-4">Gemini API Cost Analysis</h3>
-                            <div className="space-y-3">
-                                <div className="flex justify-between items-baseline p-3 rounded-lg bg-red-50 dark:bg-red-900/40">
-                                    <span className="font-medium text-red-800 dark:text-red-200">Total Estimated Cost</span>
-                                    <span className="font-bold text-xl text-red-600 dark:text-red-300">{formatCurrency(stats.geminiCost.total)}</span>
-                                </div>
-                                <div className="flex justify-between items-center p-2">
-                                    <span className="font-medium text-gray-600 dark:text-gray-300">This Month</span>
-                                    <span className="font-semibold text-lg">{formatCurrency(stats.geminiCost.month)}</span>
-                                </div>
-                                <div className="flex justify-between items-center p-2">
-                                    <span className="font-medium text-gray-600 dark:text-gray-300">Last 24h</span>
-                                    <span className="font-semibold text-lg">{formatCurrency(stats.geminiCost.day)}</span>
-                                </div>
-                            </div>
-                        </Card>
-                    )}
                 </div>
             </div>
         </>

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card } from '../shared/Card';
 import { Button } from '../shared/Button';
@@ -10,10 +9,18 @@ interface IntegrationSettingsProps {
 }
 
 export const IntegrationSettings: React.FC<IntegrationSettingsProps> = ({ onBack }) => {
+    // New user creation state
     const [newUserEmail, setNewUserEmail] = useState('');
-    const [newUserRole, setNewUserRole] = useState<'user' | 'admin'>('user');
-    const [loading, setLoading] = useState(false);
-    const [message, setMessage] = useState('');
+    const [newUserPassword, setNewUserPassword] = useState('');
+    const [newUserLoading, setNewUserLoading] = useState(false);
+    const [newUserMessage, setNewUserMessage] = useState('');
+    
+    // Admin upgrade state
+    const [upgradeEmail, setUpgradeEmail] = useState('');
+    const [upgradeLoading, setUpgradeLoading] = useState(false);
+    const [upgradeMessage, setUpgradeMessage] = useState('');
+    
+    // Platform instructions state
     const [platformName, setPlatformName] = useState('');
     const [platformInstructions, setPlatformInstructions] = useState('');
     const [loadingInstructions, setLoadingInstructions] = useState(false);
@@ -31,19 +38,88 @@ export const IntegrationSettings: React.FC<IntegrationSettingsProps> = ({ onBack
         'DigitalOcean'
     ];
 
+    const validateEmail = (email: string): string | null => {
+        // Check if email is empty
+        if (!email.trim()) {
+            return 'Email is required';
+        }
+        
+        // Basic email format validation
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            return 'Please enter a valid email address';
+        }
+        
+        // Check for reserved/test domains that Supabase rejects
+        const invalidDomains = ['example.com', 'test.com', 'localhost', 'invalid.com', 'fake.com'];
+        const domain = email.toLowerCase().split('@')[1];
+        if (invalidDomains.includes(domain)) {
+            return `Domain "${domain}" is not allowed. Please use a real domain like gmail.com, outlook.com, or your company domain.`;
+        }
+        
+        return null;
+    };
+
+    const generateValidEmail = (): string => {
+        const timestamp = Date.now();
+        const domains = ['gmail.com', 'outlook.com', 'hotmail.com', 'yahoo.com'];
+        const randomDomain = domains[Math.floor(Math.random() * domains.length)];
+        return `user${timestamp}@${randomDomain}`;
+    };
+
+    const fillExampleEmail = () => {
+        setNewUserEmail(generateValidEmail());
+        setNewUserPassword('Password123!');
+    };
+
     const handleCreateUser = async (e: React.FormEvent) => {
         e.preventDefault();
-        setLoading(true);
-        setMessage('');
+        setNewUserLoading(true);
+        setNewUserMessage('');
+        
+        // Validate email before attempting creation
+        const emailError = validateEmail(newUserEmail);
+        if (emailError) {
+            setNewUserMessage(emailError);
+            setNewUserLoading(false);
+            return;
+        }
+        
         try {
-            await api.adminCreateUser(newUserEmail, newUserRole);
-            setMessage(`${newUserRole === 'admin' ? 'Admin user' : 'User'} invitation sent to ${newUserEmail}.`);
+            // Create a regular user with email and password
+            const result = await api.adminCreateUser(newUserEmail, 'user', newUserPassword);
+            setNewUserMessage(`User account created successfully for ${newUserEmail}.`);
             setNewUserEmail('');
-            setNewUserRole('user');
+            setNewUserPassword('');
         } catch (err: any) {
-            setMessage(err.message);
+            setNewUserMessage(`Error: ${err.message}`);
         } finally {
-            setLoading(false);
+            setNewUserLoading(false);
+        }
+    };
+
+    const handleUpgradeToAdmin = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setUpgradeLoading(true);
+        setUpgradeMessage('');
+        
+        // Validate email before attempting upgrade
+        const emailError = validateEmail(upgradeEmail);
+        if (emailError) {
+            setUpgradeMessage(emailError);
+            setUpgradeLoading(false);
+            return;
+        }
+        
+        try {
+            // Upgrade existing user to admin role
+            await api.upgradeUserToAdmin(upgradeEmail);
+            setUpgradeMessage(`User ${upgradeEmail} has been upgraded to admin successfully.`);
+            setUpgradeEmail('');
+        } catch (err: any) {
+            setUpgradeMessage(`Error: ${err.message}`);
+        } finally {
+            setUpgradeLoading(false);
         }
     };
 
@@ -97,92 +173,117 @@ Make the instructions clear, beginner-friendly, and include specific screenshots
                     </svg>
                     Back to Admin Dashboard
                 </button>
-                <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Integration Settings</h1>
+                <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">User Management</h1>
                 <div></div> {/* Spacer for center alignment */}
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* User Creation Section */}
+                {/* New User Creation Section */}
                 <Card title="Create New User">
                     <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                        Manually create a new user or admin and send them an invitation email. 
-                        The user will be prompted to set up their password and profile.
+                        Create a new user account with email and password. The user will be able to login immediately.
                     </p>
+                    
+                    <div className="mb-4">
+                        <button
+                            type="button"
+                            onClick={fillExampleEmail}
+                            className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                        >
+                            📝 Fill with valid example
+                        </button>
+                    </div>
+                    
                     <form onSubmit={handleCreateUser} className="space-y-4">
                         <div>
-                            <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                            <label htmlFor="new-email" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                                 Email Address
                             </label>
                             <input
-                                id="email"
+                                id="new-email"
                                 type="email"
                                 value={newUserEmail}
                                 onChange={(e) => setNewUserEmail(e.target.value)}
                                 required
                                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                                placeholder="user@example.com"
+                                placeholder="user@gmail.com"
                             />
-                        </div>
-                        
-                        <div>
-                            <label htmlFor="role" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                User Role
-                            </label>
-                            <select
-                                id="role"
-                                value={newUserRole}
-                                onChange={(e) => setNewUserRole(e.target.value as 'user' | 'admin')}
-                                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                            >
-                                <option value="user">Regular User</option>
-                                <option value="admin">Administrator</option>
-                            </select>
                             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                Admins have access to dashboard and analytics. Regular users can only access parenting tools.
+                                Use real domains like gmail.com, outlook.com, or your company domain. Avoid test domains like example.com.
                             </p>
                         </div>
                         
-                        {message && (
-                            <div className={`text-sm p-3 rounded ${message.includes('Error') || message.includes('Failed') 
+                        <div>
+                            <label htmlFor="new-password" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                Password
+                            </label>
+                            <input
+                                id="new-password"
+                                type="password"
+                                value={newUserPassword}
+                                onChange={(e) => setNewUserPassword(e.target.value)}
+                                required
+                                minLength={8}
+                                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                                placeholder="Minimum 8 characters"
+                            />
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                Password should be at least 8 characters long and contain letters and numbers.
+                            </p>
+                        </div>
+                        
+                        {newUserMessage && (
+                            <div className={`text-sm p-3 rounded ${newUserMessage.includes('Error') || newUserMessage.includes('Failed') 
                                 ? 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-300' 
                                 : 'bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-300'
                             }`}>
-                                {message}
+                                {newUserMessage}
                             </div>
                         )}
                         
-                        <Button type="submit" isLoading={loading} className="w-full">
-                            Create & Invite {newUserRole === 'admin' ? 'Admin' : 'User'}
+                        <Button type="submit" isLoading={newUserLoading} className="w-full">
+                            Create User Account
                         </Button>
                     </form>
                 </Card>
 
-                {/* API Integration Section */}
-                <Card title="API & Integration Details">
+                {/* Admin Upgrade Section */}
+                <Card title="Upgrade User to Admin">
                     <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                        Integration information and data export tools.
+                        Upgrade an existing user to admin role. The user must already exist in the system.
                     </p>
-                    <div className="space-y-4">
+                    <form onSubmit={handleUpgradeToAdmin} className="space-y-4">
                         <div>
-                            <h4 className="font-semibold text-gray-800 dark:text-gray-200 mb-2">Database Connection</h4>
-                            <p className="text-sm text-gray-600 dark:text-gray-400">
-                                Database connection is configured and active. Contact your system administrator for connection details if needed for external integrations.
+                            <label htmlFor="upgrade-email" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                User Email Address
+                            </label>
+                            <input
+                                id="upgrade-email"
+                                type="email"
+                                value={upgradeEmail}
+                                onChange={(e) => setUpgradeEmail(e.target.value)}
+                                required
+                                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                                placeholder="existing-user@gmail.com"
+                            />
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                Enter the email of an existing user to upgrade them to admin role. Must be a real email domain.
                             </p>
                         </div>
                         
-                        <div className="pt-4 border-t border-gray-200 dark:border-gray-600">
-                            <h4 className="font-semibold text-gray-800 dark:text-gray-200 mb-2">Data Export</h4>
-                            <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                                Export all application data for backup or analysis purposes.
-                            </p>
-                            <Button onClick={() => alert("Exporting data...")} variant="secondary" className="w-full">
-                                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                </svg>
-                                Export All Data (CSV)
-                            </Button>
-                        </div>
-                    </div>
+                        {upgradeMessage && (
+                            <div className={`text-sm p-3 rounded ${upgradeMessage.includes('Error') || upgradeMessage.includes('Failed') 
+                                ? 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-300' 
+                                : 'bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-300'
+                            }`}>
+                                {upgradeMessage}
+                            </div>
+                        )}
+                        
+                        <Button type="submit" isLoading={upgradeLoading} className="w-full bg-orange-600 hover:bg-orange-700">
+                            Upgrade to Admin
+                        </Button>
+                    </form>
                 </Card>
             </div>
 

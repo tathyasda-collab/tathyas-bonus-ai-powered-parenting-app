@@ -11,7 +11,6 @@ const validateAndRender = () => {
   const requiredEnvVars = {
     VITE_SUPABASE_URL: import.meta.env.VITE_SUPABASE_URL,
     VITE_SUPABASE_ANON_KEY: import.meta.env.VITE_SUPABASE_ANON_KEY,
-    VITE_GEMINI_API_KEY: import.meta.env.VITE_GEMINI_API_KEY,
   };
 
   for (const [key, value] of Object.entries(requiredEnvVars)) {

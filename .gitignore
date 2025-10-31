@@ -13,7 +13,26 @@ dist-ssr
 *.local
 .env
 .env.local
-.env.production
+
+# Debug and test files
+debug-*.js
+debug-*.html
+debug-*.sql
+test-*.js
+test-*.html
+test-*.sql
+fix-*.js
+fix-*.html
+fix-*.sql
+*debug*
+*test*
+*fix*
+*.DEBUG.md
+*.TEST.md
+*.FIX.md
+*DEBUG*.md
+*TEST*.md
+*FIX*.md
 
 # Editor directories and files
 .vscode/*
@@ -25,3 +44,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Temporary files
+metadata.json
+vercel.json

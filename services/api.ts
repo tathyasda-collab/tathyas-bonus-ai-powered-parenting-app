@@ -115,10 +115,10 @@ export const completeUserProfile = async (profileData: {
     // Use the actual user_profiles table structure from the database
     try {
       const userProfileData = {
-        user_id: userId,
+        auth_user_id: userId,
         name: profileData.full_name,
         gender: profileData.gender ? profileData.gender.charAt(0).toUpperCase() + profileData.gender.slice(1).toLowerCase() : null, // Capitalize first letter
-        age: profileData.age,
+        age: profileData.age?.toString(),
         street: profileData.street_address,
         district: profileData.district,
         state: profileData.state,
@@ -126,7 +126,7 @@ export const completeUserProfile = async (profileData: {
         address: profileData.address,
         spouse_name: profileData.spouse_name,
         spouse_gender: profileData.spouse_gender ? profileData.spouse_gender.charAt(0).toUpperCase() + profileData.spouse_gender.slice(1).toLowerCase() : null, // Capitalize first letter
-        spouse_age: profileData.spouse_age,
+        spouse_age: profileData.spouse_age?.toString(),
         phone: profileData.phone,
         updated_at: new Date().toISOString()
       };
@@ -155,7 +155,7 @@ export const completeUserProfile = async (profileData: {
     if (profileData.baby_name && profileData.baby_gender) {
       try {
         const childData = {
-          user_id: userId,
+          auth_user_id: userId,
           baby_name: profileData.baby_name,
           baby_dob: profileData.baby_date_of_birth ? new Date(profileData.baby_date_of_birth).toISOString().split('T')[0] : null,
           created_at: new Date().toISOString()
@@ -274,16 +274,17 @@ export const createTestUser = async (email: string, password: string) => {
     }
     
     if (data.user) {
-      // Create app_users entry
+      // Create app_users entry with new schema
       const { error: appUserError } = await supabase
         .from('app_users')
         .insert({
-          user_id: data.user.id,
+          auth_user_id: data.user.id,
           email: email.toLowerCase().trim(),
           name: 'Test User',
           role: 'user',
           status: 'active',
-          subscription_renewed: false
+          subscription_renewed: false,
+          subscription_expiry: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
         });
       
       if (appUserError) {
@@ -311,9 +312,9 @@ export const loginWithPassword = async (email: string, password: string) => {
   const supabase = getSupabase();
   
   try {
-    console.log('🔍 Starting simplified login for:', email);
+    console.log('🔍 Starting login for:', email);
     
-    // Step 1: Use ONLY Supabase's built-in authentication (no additional DB calls)
+    // Step 1: Authenticate with Supabase
     const { data, error } = await supabase.auth.signInWithPassword({
       email: email.toLowerCase().trim(),
       password: password
@@ -328,14 +329,68 @@ export const loginWithPassword = async (email: string, password: string) => {
 
     console.log('✅ Supabase auth successful');
 
-    // Create minimal user session (skip all database checks for now)
+    // Step 2: Fetch user role and profile information from app_users table
+    let userRole = 'user';
+    let userName = data.user.user_metadata?.full_name || email.split('@')[0];
+    let needsProfileSetup = true; // Default to true for new users
+    
+    try {
+      const { data: appUserData, error: appUserError } = await supabase
+        .from('app_users')
+        .select('role, name, created_at')
+        .eq('auth_user_id', data.user.id)
+        .single();
+        
+      if (!appUserError && appUserData) {
+        userRole = appUserData.role || 'user';
+        userName = appUserData.name || userName;
+        
+        // Check if this is a first-time login and profile needs setup
+        // Profile setup is needed for regular users if:
+        // 1. User was created recently (within last 7 days), AND
+        // 2. User has minimal profile info (just email-derived name), AND
+        // 3. User is not an admin
+        
+        const isRecentUser = appUserData.created_at && 
+          new Date(appUserData.created_at) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+        
+        const hasMinimalProfile = !appUserData.name || 
+          appUserData.name === email.split('@')[0] || 
+          appUserData.name.includes('@') ||
+          appUserData.name.length < 3;
+        
+        // Admin users skip profile setup
+        if (userRole === 'admin') {
+          needsProfileSetup = false;
+        } else {
+          // Regular users need profile setup if they're recent AND have minimal profile
+          needsProfileSetup = isRecentUser && hasMinimalProfile;
+        }
+        
+        console.log('✅ Found user role:', userRole);
+        console.log('🔍 Profile setup needed:', needsProfileSetup, {
+          isRecentUser,
+          hasMinimalProfile,
+          userAge: appUserData.created_at ? `${Math.round((Date.now() - new Date(appUserData.created_at).getTime()) / (24 * 60 * 60 * 1000))} days` : 'unknown'
+        });
+      } else {
+        console.log('⚠️ No app_users record found, using default role');
+        // If no app_users record, definitely needs profile setup (unless admin)
+        needsProfileSetup = userRole !== 'admin';
+      }
+    } catch (roleError) {
+      console.log('⚠️ Error fetching role, using default:', roleError);
+      needsProfileSetup = true; // Default to needing setup on error
+    }
+
+    // Step 3: Create user session with correct role and profile setup status
     const userSession = {
       id: data.user.id,
       email: data.user.email,
-      role: 'user', // Default role for debugging
-      full_name: data.user.user_metadata?.full_name || email.split('@')[0],
+      role: userRole, // Use actual role from database
+      full_name: userName,
       authenticated: true,
-      needsProfileSetup: false, // Skip profile checks for debugging
+      needsProfileSetup: needsProfileSetup, // Properly determined based on profile state
       loginTime: new Date().toISOString()
     };
 
@@ -348,8 +403,8 @@ export const loginWithPassword = async (email: string, password: string) => {
       detail: { user: userSession, authenticated: true }
     }));
 
-    console.log('✅ Login completed successfully');
-    return { user: data.user, needsProfileSetup: false };
+    console.log('✅ Login completed successfully with role:', userRole);
+    return { user: data.user, needsProfileSetup: needsProfileSetup };
     
   } catch (error: any) {
     console.error('❌ Login error:', error);
@@ -433,12 +488,12 @@ export const getCurrentUser = async () => {
   return user;
 };
 
-// Get user subscription info for header display
+// Get user subscription info for header display with real-time status calculation
 export const getUserSubscriptionInfo = async (userEmail: string) => {
   const supabase = getSupabase();
   
   try {
-    const { data, error } = await supabase.rpc('get_user_subscription_info', {
+    const { data, error } = await supabase.rpc('get_user_subscription_status', {
       user_email: userEmail
     });
     
@@ -447,7 +502,19 @@ export const getUserSubscriptionInfo = async (userEmail: string) => {
       return null;
     }
     
-    return data;
+    // Return formatted data for header display
+    if (data && data.length > 0) {
+      const subscription = data[0];
+      return {
+        days_remaining: subscription.subscription_remaining_days || 0,
+        expiry_date: subscription.subscription_expiry_date,
+        is_active: subscription.is_active || false,
+        status: subscription.status || 'unknown',
+        renewal_needed: subscription.renewal_needed || false
+      };
+    }
+    
+    return null;
   } catch (error) {
     console.error('Error getting subscription info:', error);
     return null;
@@ -494,6 +561,44 @@ export const updateRenewalUrl = async (newUrl: string) => {
   }
 };
 
+// Refresh all subscription statuses (admin function)
+export const refreshAllSubscriptionStatuses = async () => {
+  const supabase = getSupabase();
+  
+  try {
+    const { data, error } = await supabase.rpc('refresh_all_subscription_statuses');
+    
+    if (error) {
+      throw new ApiError('Failed to refresh subscription statuses: ' + error.message);
+    }
+    
+    return data;
+  } catch (error) {
+    console.error('Error refreshing subscription statuses:', error);
+    throw error;
+  }
+};
+
+// Get users expiring soon (admin function)
+export const getUsersExpiringSoon = async (daysThreshold: number = 7) => {
+  const supabase = getSupabase();
+  
+  try {
+    const { data, error } = await supabase.rpc('get_users_expiring_soon', {
+      days_threshold: daysThreshold
+    });
+    
+    if (error) {
+      throw new ApiError('Failed to get expiring users: ' + error.message);
+    }
+    
+    return data || [];
+  } catch (error) {
+    console.error('Error getting expiring users:', error);
+    return [];
+  }
+};
+
 // User Data Functions
 export const getUserProfile = async (userId: string): Promise<UserProfile | null> => {
   const supabase = getSupabase();
@@ -513,19 +618,19 @@ export const getUserProfile = async (userId: string): Promise<UserProfile | null
     }
   }
 
-  // Try user_profiles table first (since that's where your data seems to be)
+  // Try user_profiles table first (using new schema with auth_user_id)
   const { data: userProfileData, error: userProfileError } = await supabase
     .from('user_profiles')
     .select('*')
-    .eq('user_id', userId)
+    .eq('auth_user_id', userId)
     .single();
     
-  console.log('user_profiles query by user_id result:', { data: userProfileData, error: userProfileError });
+  console.log('user_profiles query by auth_user_id result:', { data: userProfileData, error: userProfileError });
   
   if (!userProfileError && userProfileData) {
-    console.log('Found data in user_profiles by user_id, returning profile');
+    console.log('Found data in user_profiles by auth_user_id, returning profile');
     return {
-      id: userProfileData.user_id,
+      id: userProfileData.auth_user_id,
       email: userProfileData.email,
       full_name: userProfileData.name || userProfileData.full_name,
       gender: userProfileData.gender,
@@ -585,19 +690,19 @@ export const getUserProfile = async (userId: string): Promise<UserProfile | null
     }
   }
 
-  // Try app_users table as fallback
+  // Try app_users table as fallback (using new schema with auth_user_id)
   const { data: appUserProfileData, error: appUserProfileError } = await supabase
     .from('app_users')
     .select('*')
-    .eq('user_id', userId)
+    .eq('auth_user_id', userId)
     .single();
     
-  console.log('app_users query by user_id result:', { data: appUserProfileData, error: appUserProfileError });
+  console.log('app_users query by auth_user_id result:', { data: appUserProfileData, error: appUserProfileError });
     
   if (!appUserProfileError && appUserProfileData) {
-    console.log('Found data in app_users by user_id, returning profile');
+    console.log('Found data in app_users by auth_user_id, returning profile');
     const profileResult = {
-      id: appUserProfileData.user_id,
+      id: appUserProfileData.auth_user_id,
       email: appUserProfileData.email,
       full_name: appUserProfileData.name,
       gender: appUserProfileData.gender,
@@ -842,7 +947,7 @@ export const updateUserProfile = async (userId: string, profileData: {
     const { data, error } = await supabase
       .from('user_profiles')
       .update(updateData)
-      .eq('user_id', userId)
+      .eq('auth_user_id', userId)
       .select();
     
     if (error) {
@@ -869,8 +974,9 @@ export const getChildren = async (userId: string): Promise<Child[]> => {
     
     let data, error;
     
-    // Try different field names and approaches
+    // Try different field names and approaches for the new schema
     const queries = [
+      () => supabase.from('children').select('*').eq('auth_user_id', userId),
       () => supabase.from('children').select('*').eq('parent_id', userId),
       () => supabase.from('children').select('*').eq('user_id', userId),
       () => supabase.from('children').select('*').eq('parent_email', userEmail),
@@ -898,7 +1004,7 @@ export const getChildren = async (userId: string): Promise<Child[]> => {
     // Map the database fields to your Child interface
     return data?.map(child => ({
       id: child.child_id || child.id,
-      user_id: child.parent_id || child.user_id || userId,
+      user_id: child.auth_user_id || child.parent_id || child.user_id || userId,
       name: child.baby_name || child.name, // Map baby_name from database to name field
       age: child.baby_age || child.age || 0, // Also check for baby_age column
       gender: child.baby_gender || child.gender || 'other',
@@ -917,11 +1023,10 @@ export const saveChild = async (child: Omit<Child, 'id' | 'created_at'>) => {
   const { error } = await supabase
     .from('children')
     .insert({
-      name: child.name,
-      age: child.age,
-      gender: child.gender,
-      interests: child.interests,
-      parent_id: child.user_id
+      baby_name: child.name,
+      auth_user_id: child.user_id,
+      baby_dob: null, // Add if you have age to date conversion logic
+      interests: child.interests
     });
     
   if (error) throw new ApiError('Error saving child');
@@ -943,39 +1048,25 @@ export const getRenewalLink = async () => {
   }
 };
 
-// Get user days remaining function
+// Get user days remaining function with real-time status calculation
 export const getUserDaysRemaining = async () => {
   const supabase = getSupabase();
   
   try {
-    // Try to get user subscription info from app_users table
+    // Get current user
     const { data: user } = await supabase.auth.getUser();
     if (!user.user) {
       throw new ApiError('User not authenticated');
     }
     
-    // Try different possible field names for user identification
-    let data, error;
-    
-    // Try with email first (most likely to exist)
-    ({ data, error } = await supabase
-      .from('app_users')
-      .select('subscription_expiry_date')
-      .eq('email', user.user.email)
-      .limit(1));
+    // Use the new real-time subscription status function
+    const { data, error } = await supabase.rpc('get_user_subscription_status', {
+      user_email: user.user.email
+    });
     
     if (error) {
-      // Try with user_id if email doesn't work
-      ({ data, error } = await supabase
-        .from('app_users')
-        .select('subscription_expiry_date')
-        .eq('id', user.user.id)
-        .limit(1));
-    }
-    
-    if (error) {
-      console.log('App users query error:', error);
-      // Return default values if queries fail
+      console.log('Subscription status query error:', error);
+      // Return default values if query fails
       return {
         days_remaining: 30,
         is_active: true,
@@ -983,22 +1074,18 @@ export const getUserDaysRemaining = async () => {
       };
     }
     
-    const userData = Array.isArray(data) ? data[0] : data;
-    
-    if (userData?.subscription_expiry_date) {
-      const expiryDate = new Date(userData.subscription_expiry_date);
-      const today = new Date();
-      const diffTime = expiryDate.getTime() - today.getTime();
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      
+    if (data && data.length > 0) {
+      const subscription = data[0];
       return {
-        days_remaining: Math.max(0, diffDays),
-        is_active: true, // Default to true since column doesn't exist
-        renewal_link: null
+        days_remaining: subscription.subscription_remaining_days || 0,
+        is_active: subscription.is_active || false,
+        renewal_link: null,
+        expiry_date: subscription.subscription_expiry_date,
+        status: subscription.status
       };
     }
     
-    // Default values if no expiry date
+    // Default values if no subscription data
     return {
       days_remaining: 30,
       is_active: true,
@@ -1022,9 +1109,29 @@ let inMemoryPlannerRuns: PlannerRun[] = [];
 export const savePlannerRun = async (run: Omit<PlannerRun, 'id' | 'created_at'>) => {
   const supabase = getSupabase();
   
+  console.log('savePlannerRun called with data:', run);
+  
   try {
-    const { data, error } = await supabase.from('planner_runs').insert(run).select();
+    // Convert user_id to auth_user_id for new schema
+    const runData = {
+      ...run,
+      user_id: run.user_id // Keep user_id as is since planner_runs table uses user_id referencing auth.users(id)
+    };
+    
+    console.log('savePlannerRun - Attempting to insert:', runData);
+    
+    const { data, error } = await supabase.from('planner_runs').insert(runData).select();
+    
+    console.log('savePlannerRun - Insert result:', { data, error });
+    
     if (error) {
+      console.log('savePlannerRun - Database error details:', {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code
+      });
+      console.log('savePlannerRun - Database error, falling back to in-memory:', error);
       // Fallback to in-memory storage
       const newRun: PlannerRun = {
         ...run,
@@ -1032,8 +1139,10 @@ export const savePlannerRun = async (run: Omit<PlannerRun, 'id' | 'created_at'>)
         created_at: new Date().toISOString()
       };
       inMemoryPlannerRuns.unshift(newRun); // Add to beginning
+      console.log('savePlannerRun - Saved to in-memory, total in-memory runs:', inMemoryPlannerRuns.length);
       return newRun;
     }
+    console.log('savePlannerRun - Successfully saved to database:', data?.[0]);
     return data?.[0];
   } catch (err) {
     // Fallback to in-memory storage
@@ -1050,6 +1159,8 @@ export const savePlannerRun = async (run: Omit<PlannerRun, 'id' | 'created_at'>)
 export const getPlannerRuns = async (userId: string): Promise<PlannerRun[]> => {
   const supabase = getSupabase();
   
+  console.log('getPlannerRuns called with userId:', userId);
+  
   try {
     const { data, error } = await supabase
       .from('planner_runs')
@@ -1057,15 +1168,31 @@ export const getPlannerRuns = async (userId: string): Promise<PlannerRun[]> => {
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
     
+    console.log('getPlannerRuns - Supabase query result:', { data, error });
+    
     if (error) {
+      console.log('getPlannerRuns - Database error, falling back to in-memory:', error);
       // Filter in-memory runs by user ID and return
       const userRuns = inMemoryPlannerRuns.filter(run => run.user_id === userId);
+      console.log('getPlannerRuns - In-memory runs for user:', userRuns);
       return userRuns;
     }
-    return data || [];
+    
+    // If database query succeeded but returned no data, also check in-memory
+    const dbResults = data || [];
+    const inMemoryResults = inMemoryPlannerRuns.filter(run => run.user_id === userId);
+    
+    // Combine database and in-memory results
+    const allResults = [...dbResults, ...inMemoryResults];
+    
+    console.log('getPlannerRuns - Database results:', dbResults.length, 'In-memory results:', inMemoryResults.length);
+    console.log('getPlannerRuns - Returning combined data:', allResults.length, 'records');
+    return allResults;
   } catch (err) {
+    console.log('getPlannerRuns - Exception caught, falling back to in-memory:', err);
     // Filter in-memory runs by user ID and return
     const userRuns = inMemoryPlannerRuns.filter(run => run.user_id === userId);
+    console.log('getPlannerRuns - In-memory runs for user:', userRuns);
     return userRuns;
   }
 };
@@ -1192,49 +1319,51 @@ export const getAdminStats = async (forceRefresh = false) => {
   const supabase = getSupabase();
   
   try {
-    // Optionally refresh stats first using Edge Function
-    if (forceRefresh) {
-      await refreshAdminStats();
-    }
-    
-    // Try to get stats from admin_dashboard_stats table first (faster)
-    const { data: tableStats, error: tableError } = await supabase
+    // Try to get stats from admin_dashboard_stats view (new schema)
+    const { data: viewStats, error: viewError } = await supabase
       .from('admin_dashboard_stats')
       .select('*')
-      .eq('idx', 0)
-      .single();
+      .limit(1);
     
-    if (!tableError && tableStats) {
-      console.log('Using admin_dashboard_stats table data');
+    if (!viewError && viewStats && viewStats.length > 0) {
+      console.log('Using admin_dashboard_stats view data');
+      const stats = viewStats[0];
       return {
-        registeredUsers: tableStats.registered_users || 0,
-        activeUsers: tableStats.active_users || 0,
-        expiredUsers: tableStats.expired_users || 0,
-        renewedUsers: tableStats.renewed_users || 0,
-        expiringSoon: tableStats.expiring_soon || 0,
-        totalLogs: tableStats.total_logs || 0,
+        registeredUsers: stats.registered_users || 0,
+        activeUsers: stats.active_users || 0,
+        expiredUsers: stats.expired_users || 0,
+        renewedUsers: stats.renewed_users || 0,
+        expiringSoon: stats.expiring_soon || 0,
+        totalLogs: stats.total_logs || 0,
+        adminUsers: stats.admin_users || 0,
         toolUsage: {
           planner: { 
-            total: tableStats.planner_total || 0, 
-            day: tableStats.planner_day || 0, 
-            month: tableStats.planner_month || 0 
+            total: stats.planner_total || 0, 
+            day: stats.planner_day || 0, 
+            month: stats.planner_month || 0 
           },
           meal: { 
-            total: tableStats.meal_total || 0, 
-            day: tableStats.meal_day || 0, 
-            month: tableStats.meal_month || 0 
+            total: stats.meal_total || 0, 
+            day: stats.meal_day || 0, 
+            month: stats.meal_month || 0 
           },
           emotion: { 
-            total: tableStats.emotion_total || 0, 
-            day: tableStats.emotion_day || 0, 
-            month: tableStats.emotion_month || 0 
+            total: stats.emotion_total || 0, 
+            day: stats.emotion_day || 0, 
+            month: stats.emotion_month || 0 
+          },
+          product: {
+            total: stats.product_total || 0,
+            day: stats.product_day || 0,
+            month: stats.product_month || 0
           }
         },
         geminiCost: {
-          total: parseFloat(tableStats.gemini_cost_total || '0'),
-          month: parseFloat(tableStats.gemini_cost_month || '0'),
-          day: parseFloat(tableStats.gemini_cost_day || '0')
-        }
+          total: parseFloat(stats.gemini_cost_total || '0'),
+          month: parseFloat(stats.gemini_cost_month || '0'),
+          day: parseFloat(stats.gemini_cost_day || '0')
+        },
+        lastUpdated: stats.last_updated || stats.created_at
       };
     }
     
@@ -1346,66 +1475,83 @@ export const getAllDataForExport = async () => {
   }
 };
 
-export const adminCreateUser = async (email: string, role: 'user' | 'admin' = 'user') => {
+export const adminCreateUser = async (email: string, role: 'user' | 'admin' = 'user', password?: string) => {
   const supabase = getSupabase();
+  
   try {
-    // First, check if user already exists
-    const { data: existingUser, error: checkError } = await supabase
-      .from('auth_users')
+    // Store current session to restore later
+    const currentSession = await supabase.auth.getSession();
+    
+    // Check if user exists in app_users first
+    const { data: existingAppUser } = await supabase
+      .from('app_users')
       .select('email')
       .eq('email', email)
-      .single();
+      .maybeSingle();
 
-    if (existingUser) {
-      throw new ApiError('User with this email already exists');
+    if (existingAppUser) {
+      throw new ApiError('User with this email already exists in app_users');
     }
 
-    // Create user in auth_users table with temporary password
-    const temporaryPassword = Math.random().toString(36).slice(-12) + 'A1!';
-    const { data, error } = await supabase
-      .from('auth_users')
-      .insert({
-        email: email,
-        password_hash: temporaryPassword, // This should be hashed in production
-        role: role,
-        is_active: true,
-        full_name: null
-      })
-      .select()
-      .single();
-
-    if (error) {
-      if (error.code === '23505') { // Unique constraint violation
-        throw new ApiError('User with this email already exists');
+    const userPassword = password || Math.random().toString(36).slice(-12) + 'A1!';
+    
+    // Create a temporary Supabase client for user creation
+    const { createClient } = await import('@supabase/supabase-js');
+    const tempSupabase = createClient(
+      import.meta.env.VITE_SUPABASE_URL,
+      import.meta.env.VITE_SUPABASE_ANON_KEY
+    );
+    
+    // Use the temporary client to sign up the new user
+    const { data: authData, error: authError } = await tempSupabase.auth.signUp({
+      email: email,
+      password: userPassword,
+      options: {
+        data: {
+          full_name: email.split('@')[0]
+        }
       }
-      throw new ApiError(`Failed to create user: ${error.message}`);
+    });
+
+    if (authError) {
+      throw new ApiError(`Failed to create auth user: ${authError.message}`);
     }
 
-    // Create corresponding user profile
-    const { error: profileError } = await supabase
-      .from('user_profiles')
+    if (!authData.user) {
+      throw new ApiError('Failed to create user: No user data returned');
+    }
+
+    // Sign out from the temporary client to avoid session conflicts
+    await tempSupabase.auth.signOut();
+
+    // Restore the original session
+    if (currentSession.data.session) {
+      await supabase.auth.setSession(currentSession.data.session);
+    }
+
+    // Create corresponding user in app_users table
+    const { error: appUserError } = await supabase
+      .from('app_users')
       .insert({
-        id: data.id,
+        auth_user_id: authData.user.id,
         email: email,
+        name: email.split('@')[0],
         role: role,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        status: 'active',
+        subscription_renewed: true,
+        subscription_expiry: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()
       });
 
-    if (profileError) {
-      console.error('Error creating user profile:', profileError);
-      // Don't throw here as the main user creation succeeded
+    if (appUserError) {
+      console.error('Error creating app user:', appUserError);
+      throw new ApiError(`Failed to create user profile: ${appUserError.message}`);
     }
 
-    // In a real application, you would send an invitation email here
-    // For now, we'll just log the temporary password
-    console.log(`User created with temporary password: ${temporaryPassword}`);
-    
     return {
-      id: data.id,
-      email: data.email,
-      role: data.role,
-      temporaryPassword: temporaryPassword
+      id: authData.user.id,
+      email: authData.user.email,
+      role: role,
+      password: password ? undefined : userPassword // Only return password if it was auto-generated
     };
   } catch (error) {
     console.error('Error in adminCreateUser:', error);
@@ -1413,5 +1559,54 @@ export const adminCreateUser = async (email: string, role: 'user' | 'admin' = 'u
       throw error;
     }
     throw new ApiError('Failed to create user');
+  }
+};
+
+export const upgradeUserToAdmin = async (email: string) => {
+  const supabase = getSupabase();
+  try {
+    // Find user in app_users
+    const { data: appUser, error: findError } = await supabase
+      .from('app_users')
+      .select('*')
+      .eq('email', email)
+      .maybeSingle();
+
+    if (findError) {
+      throw new ApiError(`Error finding user: ${findError.message}`);
+    }
+
+    if (!appUser) {
+      throw new ApiError('User with this email does not exist');
+    }
+
+    if (appUser.role === 'admin') {
+      throw new ApiError('User is already an admin');
+    }
+
+    // Update user role to admin
+    const { error: updateError } = await supabase
+      .from('app_users')
+      .update({ 
+        role: 'admin',
+        updated_at: new Date().toISOString()
+      })
+      .eq('email', email);
+
+    if (updateError) {
+      throw new ApiError(`Failed to upgrade user: ${updateError.message}`);
+    }
+
+    return {
+      email: email,
+      role: 'admin',
+      message: 'User successfully upgraded to admin'
+    };
+  } catch (error) {
+    console.error('Error in upgradeUserToAdmin:', error);
+    if (error instanceof ApiError) {
+      throw error;
+    }
+    throw new ApiError('Failed to upgrade user to admin');
   }
 };

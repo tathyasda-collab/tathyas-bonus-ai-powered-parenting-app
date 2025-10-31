@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI-Powered Parenting Assistant | Tathyas</title>
+    <meta name="description" content="Personalized parenting guidance powered by AI - Custom daily routines, meal plans, and emotional support tools for modern parents">
+    <meta name="keywords" content="AI parenting, parenting assistant, child development, meal planning, emotional support">
+    
+    <!-- Open Graph -->
+    <meta property="og:title" content="AI-Powered Parenting Assistant | Tathyas">
+    <meta property="og:description" content="Get personalized parenting plans, meal suggestions, and emotional support tools powered by AI">
+    <meta property="og:image" content="https://tathyas.in/images/parenting-app-preview.jpg">
+    <meta property="og:url" content="https://tathyas.in/parenting-assistant">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            line-height: 1.6;
+            color: #333;
+        }
+        
+        .hero {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 100px 20px;
+            text-align: center;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .hero h1 {
+            font-size: 3.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .hero p {
+            font-size: 1.5rem;
+            margin-bottom: 2rem;
+            opacity: 0.9;
+            max-width: 600px;
+        }
+        
+        .cta-button {
+            display: inline-block;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            padding: 18px 40px;
+            text-decoration: none;
+            border-radius: 50px;
+            font-size: 1.2rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(255,255,255,0.3);
+        }
+        
+        .cta-button:hover {
+            background: rgba(255,255,255,0.3);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+        
+        .features {
+            padding: 100px 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .features h2 {
+            text-align: center;
+            font-size: 2.5rem;
+            margin-bottom: 60px;
+            color: #2d3748;
+        }
+        
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 40px;
+        }
+        
+        .feature {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            text-align: center;
+            transition: transform 0.3s ease;
+        }
+        
+        .feature:hover {
+            transform: translateY(-5px);
+        }
+        
+        .feature-icon {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 50%;
+            margin: 0 auto 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+        }
+        
+        .feature h3 {
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+            color: #2d3748;
+        }
+        
+        .feature p {
+            color: #666;
+            font-size: 1.1rem;
+        }
+        
+        .stats {
+            background: #f7fafc;
+            padding: 80px 20px;
+            text-align: center;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 40px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .stat h3 {
+            font-size: 3rem;
+            color: #667eea;
+            font-weight: 700;
+        }
+        
+        .stat p {
+            color: #666;
+            font-size: 1.1rem;
+            margin-top: 10px;
+        }
+        
+        .cta-section {
+            background: linear-gradient(135deg, #2d3748 0%, #4a5568 100%);
+            color: white;
+            padding: 80px 20px;
+            text-align: center;
+        }
+        
+        .cta-section h2 {
+            font-size: 2.5rem;
+            margin-bottom: 20px;
+        }
+        
+        .cta-section p {
+            font-size: 1.2rem;
+            margin-bottom: 30px;
+            opacity: 0.9;
+        }
+        
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 2.5rem;
+            }
+            
+            .hero p {
+                font-size: 1.2rem;
+            }
+            
+            .features-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .feature {
+                padding: 30px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <section class="hero">
+        <h1>AI-Powered Parenting Assistant</h1>
+        <p>Get personalized parenting plans, meal suggestions, and emotional support tools designed specifically for your child's needs</p>
+        <a href="https://bonusaiapp.tathyas.in" class="cta-button">Launch App →</a>
+    </section>
+    
+    <section class="stats">
+        <div class="stats-grid">
+            <div class="stat">
+                <h3>1000+</h3>
+                <p>Parents Helped</p>
+            </div>
+            <div class="stat">
+                <h3>5000+</h3>
+                <p>Plans Generated</p>
+            </div>
+            <div class="stat">
+                <h3>12</h3>
+                <p>Languages Supported</p>
+            </div>
+            <div class="stat">
+                <h3>24/7</h3>
+                <p>Available</p>
+            </div>
+        </div>
+    </section>
+    
+    <section class="features">
+        <h2>Everything You Need for Smart Parenting</h2>
+        <div class="features-grid">
+            <div class="feature">
+                <div class="feature-icon">📅</div>
+                <h3>Personalized Planning</h3>
+                <p>Custom daily routines based on your child's age, interests, and developmental stage. AI-powered recommendations that grow with your child.</p>
+            </div>
+            
+            <div class="feature">
+                <div class="feature-icon">🍎</div>
+                <h3>Meal Assistant</h3>
+                <p>Nutritious meal plans and recipes tailored for growing children. Handle picky eaters with creative, healthy alternatives.</p>
+            </div>
+            
+            <div class="feature">
+                <div class="feature-icon">💚</div>
+                <h3>Emotional Check-ins</h3>
+                <p>Track and support your child's emotional development with guided activities and expert insights for better mental health.</p>
+            </div>
+            
+            <div class="feature">
+                <div class="feature-icon">🌍</div>
+                <h3>Multi-language Support</h3>
+                <p>Available in Hindi, Telugu, Tamil, Bengali, and 8+ other Indian languages, plus English, Spanish, French, and more.</p>
+            </div>
+            
+            <div class="feature">
+                <div class="feature-icon">📱</div>
+                <h3>Mobile Friendly</h3>
+                <p>Access your parenting assistant anywhere, anytime. Responsive design that works perfectly on phones, tablets, and computers.</p>
+            </div>
+            
+            <div class="feature">
+                <div class="feature-icon">🔒</div>
+                <h3>Privacy First</h3>
+                <p>Your family's data is secure and private. No sharing with third parties, with full control over your information.</p>
+            </div>
+        </div>
+    </section>
+    
+    <section class="cta-section">
+        <h2>Ready to Transform Your Parenting Journey?</h2>
+        <p>Join thousands of parents who are already using AI to create better experiences for their children</p>
+        <a href="https://bonusaiapp.tathyas.in" class="cta-button">Get Started Free →</a>
+    </section>
+    
+    <script>
+        // Simple analytics tracking
+        if (typeof gtag !== 'undefined') {
+            gtag('event', 'page_view', {
+                page_title: 'Parenting App Landing',
+                page_location: window.location.href
+            });
+        }
+        
+        // Track CTA clicks
+        document.querySelectorAll('.cta-button').forEach(button => {
+            button.addEventListener('click', function() {
+                if (typeof gtag !== 'undefined') {
+                    gtag('event', 'click', {
+                        event_category: 'CTA',
+                        event_label: 'Launch App'
+                    });
+                }
+            });
+        });
+    </script>
+</body>
+</html>

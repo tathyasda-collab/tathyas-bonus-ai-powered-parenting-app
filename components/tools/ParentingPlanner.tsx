@@ -45,6 +45,7 @@ export const ParentingPlanner: React.FC = () => {
 
     useEffect(() => {
         if (user) {
+            console.log('ParentingPlanner useEffect - User found:', user.id);
             api.getChildren(user.id).then(data => {
                 setChildren(data);
                 if (data.length > 0) {
@@ -52,6 +53,8 @@ export const ParentingPlanner: React.FC = () => {
                 }
             });
             fetchHistory();
+        } else {
+            console.log('ParentingPlanner useEffect - No user found');
         }
     }, [user]);
 
@@ -63,10 +66,21 @@ export const ParentingPlanner: React.FC = () => {
     
     const fetchHistory = () => {
         if (!user) return;
+        console.log('Fetching planner history for user:', user.id);
         setHistoryLoading(true);
         api.getPlannerHistory(user.id)
-            .then(setHistory)
-            .catch(err => console.error("Failed to fetch history:", err))
+            .then(data => {
+                console.log('Fetched planner history:', data);
+                console.log('History count:', data?.length || 0);
+                if (data && data.length > 0) {
+                    console.log('Sample history item:', data[0]);
+                }
+                setHistory(data);
+            })
+            .catch(err => {
+                console.error("Failed to fetch history:", err);
+                showError(err.message || 'Failed to fetch planner history');
+            })
             .finally(() => setHistoryLoading(false));
     };
 
